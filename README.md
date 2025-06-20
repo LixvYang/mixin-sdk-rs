@@ -6,8 +6,8 @@
 
 <br />
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/lixvyang/mixin_sdk_rs/ci.yml?branch=master&style=flat-square)](https://github.com/lixvyang/mixin_sdk_rs/actions)
-[![Crates.io](https://img.shields.io/crates/v/mixin_sdk_rs.svg?style=flat-square)](https://crates.io/crates/mixin_sdk_rs)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/lixvyang/mixin-sdk-rs/ci.yml?branch=master&style=flat-square)](https://github.com/lixvyang/mixin-sdk-rs/actions)
+[![Crates.io](https://img.shields.io/crates/v/mixin-sdk-rs.svg?style=flat-square)](https://crates.io/crates/mixin-sdk-rs)
 
 </div>
 
@@ -38,7 +38,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-mixin_sdk_rs = { git = "https://github.com/lixvyang/mixin_sdk_rs" }
+mixin-sdk-rs = { git = "https://github.com/lixvyang/mixin-sdk-rs" }
 tokio = { version = "1", features = ["full"] }
 ```
 
