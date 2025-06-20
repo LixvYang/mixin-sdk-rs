@@ -39,17 +39,16 @@ mod tests {
 
     #[test]
     fn test_unique_object_id() {
-        let id = unique_object_id(&["test", "test"]);
-        println!("id1: {}", id);
+        let id = unique_object_id(["test", "test"]);
+        println!("{}", id);
 
-        let id2 = unique_object_id(vec!["test".to_string(), "test".to_string()]);
-        println!("id2: {}", id2);
+        let id2 = unique_object_id(["test".to_string(), "test".to_string()]);
+        println!("{}", id2);
 
-        let id3 = unique_object_id(["test".to_string(), "test".to_string()].into_iter());
-        println!("id3: {}", id3);
+        let id3 = unique_object_id(["test".to_string(), "test".to_string()]);
+        println!("{}", id3);
 
-        assert_eq!(id, id2);
-        assert_eq!(id, id3);
+        assert_eq!(id, "e7228969313a152303c749a26322b7a912627448".to_string());
     }
 
     #[test]

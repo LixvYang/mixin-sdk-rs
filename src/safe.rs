@@ -66,14 +66,14 @@ impl SafeUser {
     }
 
     pub fn new_from_env_str(env: &str) -> Result<Self, Error> {
-        let env = if env.len() == 0 {
+        let env = if env.is_empty() {
             "TEST_KEYSTORE_PATH"
         } else {
             env
         };
         let env = std::env::var(env).unwrap();
         let path = std::path::Path::new(&env);
-        return Self::new_from_file(path.to_str().unwrap());
+        Self::new_from_file(path.to_str().unwrap())
     }
 }
 

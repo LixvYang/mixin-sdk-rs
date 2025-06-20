@@ -99,7 +99,7 @@ pub async fn request_with_id(
     headers.insert("X-Request-Id", HeaderValue::from_str(&request_id)?);
     headers.insert(
         USER_AGENT,
-        HeaderValue::from_str(&*USER_AGENT_STR.lock().unwrap())?,
+        HeaderValue::from_str(&USER_AGENT_STR.lock().unwrap())?,
     );
 
     let response = HTTP_CLIENT

@@ -116,6 +116,7 @@ pub fn sign_authentication_token_with_request_id(
     Ok(token)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn sign_oauth_access_token(
     app_id: &str,
     authorization_id: &str,
