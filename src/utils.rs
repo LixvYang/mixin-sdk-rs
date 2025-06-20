@@ -48,7 +48,7 @@ mod tests {
         let id3 = unique_object_id(["test".to_string(), "test".to_string()]);
         println!("{}", id3);
 
-        assert_eq!(id, "e7228969313a152303c749a26322b7a912627448".to_string());
+        assert_eq!(id, "05a671c6-6aef-3a12-8cc0-8b76ea6d30bb".to_string());
     }
 
     #[test]
