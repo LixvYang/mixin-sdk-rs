@@ -147,10 +147,16 @@ pub mod crypto {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use super::*;
 
     #[tokio::test]
     async fn test_new_from_env() {
+        if env::var("TEST_KEYSTORE_PATH").is_err() {
+            println!("TEST_KEYSTORE_PATH is not set");
+            return;
+        }
         let safe_user = SafeUser::new_from_env().expect("Failed to init user from env");
         println!("{:?}", safe_user);
     }

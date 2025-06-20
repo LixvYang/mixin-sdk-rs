@@ -232,22 +232,18 @@ pub async fn update_preference(
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use super::*;
     use crate::safe::SafeUser;
 
     #[tokio::test]
     async fn test_get_user() {
+        if env::var("TEST_KEYSTORE_PATH").is_err() {
+            println!("TEST_KEYSTORE_PATH is not set");
+            return;
+        }
         let safe_user = SafeUser::new_from_env().unwrap();
-        // match get_user(&safe_user, "").await {
-        //     Ok(user) => {
-        //         println!("Successfully retrieved user: {:#?}", user);
-        //         assert_eq!(user.user_id, "fcb87491-4fa0-4c2f-b387-262b63cbc112");
-        //     }
-        //     Err(e) => {
-        //         panic!("Failed to get user: {}", e);
-        //     }
-        // }
-
         match request_user_me(&safe_user).await {
             Ok(user) => {
                 println!("Successfully retrieved user: {:#?}", user);

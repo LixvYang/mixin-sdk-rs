@@ -46,12 +46,6 @@ impl From<ApiError> for Error {
     }
 }
 
-impl From<String> for Error {
-    fn from(err: String) -> Self {
-        Error::Server(err)
-    }
-}
-
 impl From<InvalidHeaderValue> for Error {
     fn from(err: InvalidHeaderValue) -> Self {
         Error::Server(err.to_string())
