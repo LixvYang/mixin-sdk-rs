@@ -22,9 +22,9 @@
 //! cargo run --example get_me --all-features
 //! ```
 
-use mixin_sdk::error::Error;
-use mixin_sdk::safe::SafeUser;
-use mixin_sdk::user;
+use mixin_sdk_rs::error::Error;
+use mixin_sdk_rs::safe::SafeUser;
+use mixin_sdk_rs::user;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

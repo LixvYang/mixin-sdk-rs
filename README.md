@@ -6,8 +6,8 @@
 
 <br />
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/lixvyang/mixin_sdk/ci.yml?branch=master&style=flat-square)](https://github.com/lixvyang/mixin_sdk/actions)
-[![Crates.io](https://img.shields.io/crates/v/mixin-sdk.svg?style=flat-square)](https://crates.io/crates/mixin_sdk)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/lixvyang/mixin_sdk_rs/ci.yml?branch=master&style=flat-square)](https://github.com/lixvyang/mixin_sdk_rs/actions)
+[![Crates.io](https://img.shields.io/crates/v/mixin_sdk_rs.svg?style=flat-square)](https://crates.io/crates/mixin_sdk_rs)
 
 </div>
 
@@ -38,7 +38,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-mixin_sdk = { git = "https://github.com/lixvyang/mixin_sdk" }
+mixin_sdk_rs = { git = "https://github.com/lixvyang/mixin_sdk_rs" }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -66,9 +66,9 @@ It is highly recommended to manage your bot's credentials using a `keystore.json
 Now you can load the `SafeUser` from your keystore and make API calls.
 
 ```rust
-use mixin_sdk::safe::SafeUser;
-use mixin_sdk::user;
-use mixin_sdk::error::Error;
+use mixin_sdk_rs::safe::SafeUser;
+use mixin_sdk_rs::user;
+use mixin_sdk_rs::error::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -109,7 +109,7 @@ For instance, to run the `get_me.rs` example:
 
 ## Error Handling
 
-All API functions return a `Result<T, mixin_sdk::error::Error>`. You can match on the `Error` enum to handle different failure scenarios.
+All API functions return a `Result<T, mixin_sdk_rs::error::Error>`. You can match on the `Error` enum to handle different failure scenarios.
 
 ```rust
 // ... inside an async function

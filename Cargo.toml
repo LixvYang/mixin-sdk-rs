@@ -1,14 +1,13 @@
 [package]
-name = "mixin_sdk"
+name = "mixin_sdk_rs"
 version = "0.0.1"
 edition = "2024"
 authors = ["Larsson"]
 description = "Mixin SDK for Rust"
-repository = "https://github.com/lixvyang/mixin_sdk"
+repository = "https://github.com/lixvyang/mixin_sdk_rs"
 license = "Apache-2.0"
 readme = "README.md"
 keywords = ["mixin", "sdk", "rust"]
-categories = ["network", "cryptocurrency", "mixin", "sdk", "rust"]
 license-file = "LICENSE"
 
 [dependencies]

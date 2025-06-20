@@ -817,7 +817,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mixin_sdk"
+name = "mixin_sdk_rs"
 version = "0.0.1"
 dependencies = [
  "base64",
