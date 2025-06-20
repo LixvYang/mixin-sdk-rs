@@ -1,7 +1,10 @@
 use crate::{
     auth::sign_authentication_token,
     error::Error,
-    request::{ApiResponse, DEFAULT_API_HOST, DEFAULT_USER_AGENT, HTTP_CLIENT, request_with_id},
+    request::{
+        ApiResponse, DEFAULT_API_HOST, DEFAULT_USER_AGENT, HTTP_CLIENT, request, request_with_id,
+        simple_request,
+    },
     safe::SafeUser,
 };
 use reqwest::{
@@ -72,6 +75,49 @@ pub struct Membership {
     pub expired_at: Option<String>,
 }
 
+pub static RELATIONSHIP_ACTION_ADD: &str = "ADD";
+pub static RELATIONSHIP_ACTION_UPDATE: &str = "UPDATE";
+pub static RELATIONSHIP_ACTION_REMOVE: &str = "REMOVE";
+pub static RELATIONSHIP_ACTION_BLOCK: &str = "BLOCK";
+pub static RELATIONSHIP_ACTION_UNBLOCK: &str = "UNBLOCK";
+
+pub static PREFERENCE_SOURCE_ALL: &str = "EVERYBODY";
+pub static PREFERENCE_SOURCE_CONTACTS: &str = "CONTACTS";
+pub static PREFERENCE_SOURCE_NO_BODY: &str = "NOBODY";
+
+pub async fn create_user_simple(session_secret: &str, full_name: &str) -> Result<User, Error> {
+    let data = serde_json::json!({
+        "session_secret": session_secret,
+        "full_name": full_name,
+    });
+
+    let body = simple_request("POST", "/users", data.to_string().as_bytes()).await?;
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn create_user_with_phone(
+    session_secret: &str,
+    full_name: &str,
+    safe_user: &SafeUser,
+) -> Result<User, Error> {
+    let data = serde_json::json!({
+        "session_secret": session_secret,
+        "full_name": full_name,
+    });
+
+    let token = sign_authentication_token("POST", "/users", data.as_str().unwrap(), safe_user)?;
+    let body = request("POST", "/users", data.to_string().as_bytes(), &token).await?;
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
 pub async fn get_user(safe_user: &SafeUser, user_id: &str) -> Result<User, Error> {
     let path = "/users/".to_string() + user_id;
 
@@ -108,6 +154,17 @@ pub async fn get_user(safe_user: &SafeUser, user_id: &str) -> Result<User, Error
         .map_err(|e| Error::DataNotFound(e.to_string()))
 }
 
+pub async fn search_user(query: &str, safe_user: &SafeUser) -> Result<User, Error> {
+    let path = "/search/".to_string() + query;
+    let token = sign_authentication_token("GET", &path, "", safe_user)?;
+    let body = request("GET", &path, &[], &token).await?;
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
 pub async fn user_me_with_request_id(access_token: &str, request_id: &str) -> Result<User, Error> {
     let method = "GET";
     let path = "/safe/me";
@@ -127,6 +184,50 @@ pub async fn request_user_me(safe_user: &SafeUser) -> Result<User, Error> {
     let path = "/safe/me";
     let token = sign_authentication_token("GET", path, "", safe_user)?;
     return user_me(&token).await;
+}
+
+pub async fn update_user_me(
+    full_name: &str,
+    avatar_base64: &str,
+    safe_user: &SafeUser,
+) -> Result<User, Error> {
+    let data = serde_json::json!({
+        "full_name": full_name,
+        "avatar_base64": avatar_base64,
+    });
+
+    let path = "/me";
+    let token = sign_authentication_token("POST", path, data.as_str().unwrap(), safe_user)?;
+    let body = request("POST", path, data.to_string().as_bytes(), &token).await?;
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn update_preference(
+    message_source: &str,
+    conversation_source: &str,
+    currency: &str,
+    threshold: &f64,
+    safe_user: &SafeUser,
+) -> Result<User, Error> {
+    let data = serde_json::json!({
+        "receive_message_source": message_source,
+        "accept_conversation_source": conversation_source,
+        "fiat_currency": currency,
+        "transfer_notification_threshold": threshold,
+    });
+
+    let path = "/me/preference";
+    let token = sign_authentication_token("POST", path, data.as_str().unwrap(), safe_user)?;
+    let body = request("POST", path, data.to_string().as_bytes(), &token).await?;
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
 }
 
 #[cfg(test)]

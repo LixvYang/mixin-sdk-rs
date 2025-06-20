@@ -68,12 +68,10 @@ pub fn set_blaze_uri(blaze: String) {
     *BLAZE_URI.lock().unwrap() = blaze;
 }
 
-// 设置 User Agent
 pub fn set_user_agent(ua: String) {
     *USER_AGENT_STR.lock().unwrap() = ua;
 }
 
-// 发送请求
 pub async fn request(
     method: &str,
     path: &str,

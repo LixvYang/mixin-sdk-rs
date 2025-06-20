@@ -19,6 +19,8 @@ base64 = "0.22.1"
 ring = "0.17.14"
 thiserror = "2.0.12"
 http = "1.1.0"
+md5 = "0.7"
+url = "2.5.0"
 
 [profile.release]
 lto = true
