@@ -1,19 +1,5 @@
 <div align="center">
 
-```
-      /\\
-     ( /   @ @    ()
-      \\  _=-_  /
-       \\/     \\/
-_,-.,-./ /\\/\\,-._
-  _,-.,-./ /\\/\\,-._  /
- /_,-.,-./ /\\/\\,-._\\/
-|         Mixin      |
-|    SDK for Rust    |
- \\_,-.,-./ /\\/\\,-._/
-  `-,._,-,      ,-'
-      `-,_,-'
-```
 <h1>Mixin SDK for Rust</h1>
 
 **A complete, secure, and idiomatic Rust SDK for the Mixin Network & Mixin Messenger.**
@@ -49,7 +35,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-mixin_sdk = { git = "https://github.com/rebetxin/mixin_sdk" }
+mixin_sdk = { git = "https://github.com/lixvyang/mixin_sdk" }
 tokio = { version = "1", features = ["full"] }
 ```
 
