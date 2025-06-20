@@ -4,12 +4,12 @@
 
 **A complete, secure, and idiomatic Rust SDK for the Mixin Network & Mixin Messenger.**
 
+<br />
+
+[![CI Status](https://img.shields.io/github/actions/workflow/status/lixvyang/mixin_sdk/ci.yml?branch=master&style=flat-square)](https://github.com/lixvyang/mixin_sdk/actions)
+[![Crates.io](https://img.shields.io/crates/v/mixin-sdk.svg?style=flat-square)](https://crates.io/crates/mixin_sdk)
+
 </div>
-
-[![CI Status](https://img.shields.io/github/actions/workflow/status/lixvyang/mixin_sdk/ci.yml?branch=main&style=flat-square)](https://github.com/lixvyang/mixin_sdk/actions)
-
-<!-- [![Crates.io](https://img.shields.io/crates/v/mixin-sdk.svg?style=flat-square)](https://crates.io/crates/mixin-sdk) -->
-
 
 ---
 

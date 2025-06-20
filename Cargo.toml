@@ -2,6 +2,14 @@
 name = "mixin_sdk"
 version = "0.0.1"
 edition = "2024"
+authors = ["Larsson"]
+description = "Mixin SDK for Rust"
+repository = "https://github.com/lixvyang/mixin_sdk"
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["mixin", "sdk", "rust"]
+categories = ["network", "cryptocurrency", "mixin", "sdk", "rust"]
+license-file = "LICENSE"
 
 [dependencies]
 reqwest = { version = "0.12.20", features = ["json"] }
@@ -25,3 +33,4 @@ url = "2.5.0"
 [profile.release]
 lto = true
 strip = true
+
