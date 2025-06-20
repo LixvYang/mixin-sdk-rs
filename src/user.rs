@@ -1,7 +1,7 @@
 use crate::{
     auth::sign_authentication_token,
     error::Error,
-    request::{ApiResponse, DEFAULT_API_HOST, DEFAULT_USER_AGENT, HTTP_CLIENT},
+    request::{ApiResponse, DEFAULT_API_HOST, DEFAULT_USER_AGENT, HTTP_CLIENT, request_with_id},
     safe::SafeUser,
 };
 use reqwest::{
@@ -9,6 +9,7 @@ use reqwest::{
     header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT},
 };
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct User {
@@ -104,6 +105,28 @@ pub async fn get_user(safe_user: &SafeUser, user_id: &str) -> Result<User, Error
     parsed
         .data
         .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn user_me_with_request_id(access_token: &str, request_id: &str) -> Result<User, Error> {
+    let method = "GET";
+    let path = "/safe/me";
+    let response = request_with_id(method, path, &[], access_token, request_id.to_string()).await?;
+    let parsed: ApiResponse<User> = serde_json::from_slice(&response)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn user_me(access_token: &str) -> Result<User, Error> {
+    return user_me_with_request_id(access_token, &Uuid::new_v4().to_string()).await;
+}
+
+pub async fn request_user_me(safe_user: &SafeUser) -> Result<User, Error> {
+    let path = "/safe/me";
+    let token = sign_authentication_token("GET", path, "", safe_user)?;
+    return user_me(&token).await;
 }
 
 #[cfg(test)]
@@ -113,18 +136,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_user() {
-        let safe_user = SafeUser::new(
-            "".to_string(),
-            "".to_string(),
-            "".to_string(),
-            "".to_string(),
-            "".to_string(),
-        );
+        let safe_user = SafeUser::new_from_env().unwrap();
+        // match get_user(&safe_user, "").await {
+        //     Ok(user) => {
+        //         println!("Successfully retrieved user: {:#?}", user);
+        //         assert_eq!(user.user_id, "fcb87491-4fa0-4c2f-b387-262b63cbc112");
+        //     }
+        //     Err(e) => {
+        //         panic!("Failed to get user: {}", e);
+        //     }
+        // }
 
-        match get_user(&safe_user, "").await {
+        match request_user_me(&safe_user).await {
             Ok(user) => {
                 println!("Successfully retrieved user: {:#?}", user);
-                assert_eq!(user.user_id, "");
             }
             Err(e) => {
                 panic!("Failed to get user: {}", e);

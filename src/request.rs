@@ -8,6 +8,8 @@ use std::sync::Mutex;
 use std::time::Duration;
 use uuid::Uuid;
 
+use crate::error::Error;
+
 pub const DEFAULT_API_HOST: &str = "https://api.mixin.one";
 pub const DEFAULT_BLAZE_HOST: &str = "blaze.mixin.one";
 pub const DEFAULT_USER_AGENT: &str = "Bot-API-Rust-Client";
@@ -77,7 +79,7 @@ pub async fn request(
     path: &str,
     body: &[u8],
     access_token: &str,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u8>, Error> {
     request_with_id(method, path, body, access_token, Uuid::new_v4().to_string()).await
 }
 
@@ -87,7 +89,7 @@ pub async fn request_with_id(
     body: &[u8],
     access_token: &str,
     request_id: String,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u8>, Error> {
     let uri = format!("{}{}", *HTTP_URI.lock().unwrap(), path);
 
     let mut headers = HeaderMap::new();
@@ -110,15 +112,39 @@ pub async fn request_with_id(
         .await?;
 
     if response.status().is_server_error() {
-        return Err(format!(
-            "Server error: status code {} for request {}",
-            response.status().as_u16(),
-            request_id
-        )
-        .into());
+        let error = ApiError {
+            status: response.status().as_u16() as i32,
+            code: 0,
+            description: "Server error".to_string(),
+        };
+        return Err(error.into());
     }
 
     let body = response.bytes().await?;
-    println!("body: {:?}", String::from_utf8_lossy(&body));
+    Ok(body.to_vec())
+}
+
+pub async fn simple_request(method: &str, path: &str, body: &[u8]) -> Result<Vec<u8>, Error> {
+    let uri = format!("{}{}", *HTTP_URI.lock().unwrap(), path);
+
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    let response = HTTP_CLIENT
+        .request(reqwest::Method::from_bytes(method.as_bytes())?, &uri)
+        .headers(headers)
+        .body(body.to_vec())
+        .send()
+        .await?;
+
+    if response.status().is_server_error() {
+        let error = ApiError {
+            status: response.status().as_u16() as i32,
+            code: 0,
+            description: "Server error".to_string(),
+        };
+        return Err(error.into());
+    }
+
+    let body = response.bytes().await?;
     Ok(body.to_vec())
 }

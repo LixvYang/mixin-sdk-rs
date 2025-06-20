@@ -1,5 +1,7 @@
 use crate::auth::AuthError;
 use crate::request::ApiError;
+use http::method::InvalidMethod;
+use reqwest::header::InvalidHeaderValue;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -16,6 +18,8 @@ pub enum Error {
     Input(String),
     #[error("Data not found in API response: {0}")]
     DataNotFound(String),
+    #[error("Server error: {0}")]
+    Server(String),
 }
 
 impl From<reqwest::Error> for Error {
@@ -39,5 +43,23 @@ impl From<AuthError> for Error {
 impl From<ApiError> for Error {
     fn from(err: ApiError) -> Self {
         Error::Api(err)
+    }
+}
+
+impl From<String> for Error {
+    fn from(err: String) -> Self {
+        Error::Server(err)
+    }
+}
+
+impl From<InvalidHeaderValue> for Error {
+    fn from(err: InvalidHeaderValue) -> Self {
+        Error::Server(err.to_string())
+    }
+}
+
+impl From<InvalidMethod> for Error {
+    fn from(err: InvalidMethod) -> Self {
+        Error::Server(err.to_string())
     }
 }

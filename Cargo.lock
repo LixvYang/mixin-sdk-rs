@@ -818,6 +818,7 @@ dependencies = [
  "chrono",
  "ed25519-dalek",
  "hex",
+ "http",
  "jsonwebtoken",
  "once_cell",
  "reqwest",

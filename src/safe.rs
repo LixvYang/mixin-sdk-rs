@@ -54,6 +54,27 @@ impl SafeUser {
             is_spend_private_sum: false,
         }
     }
+
+    pub fn new_from_file(path: &str) -> Result<Self, Error> {
+        let file = std::fs::read(path).unwrap();
+        let safe_user: SafeUser = serde_json::from_slice(&file).unwrap();
+        Ok(safe_user)
+    }
+
+    pub fn new_from_env() -> Result<Self, Error> {
+        Self::new_from_env_str("")
+    }
+
+    pub fn new_from_env_str(env: &str) -> Result<Self, Error> {
+        let env = if env.len() == 0 {
+            "TEST_KEYSTORE_PATH"
+        } else {
+            env
+        };
+        let env = std::env::var(env).unwrap();
+        let path = std::path::Path::new(&env);
+        return Self::new_from_file(path.to_str().unwrap());
+    }
 }
 
 impl GhostKeys {
@@ -121,5 +142,16 @@ pub mod crypto {
                 value: s.to_string(),
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_new_from_env() {
+        let safe_user = SafeUser::new_from_env().expect("Failed to init user from env");
+        println!("{:?}", safe_user);
     }
 }
