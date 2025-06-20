@@ -115,18 +115,18 @@ All API functions return a `Result<T, mixin_sdk_rs::error::Error>`. You can matc
 // ... inside an async function
 if let Err(err) = user::request_user_me(&user).await {
     match err {
-        Error::Api(e) => {
+        mixin_sdk_rs::error::Error::Api(e) => {
             // Error returned by the Mixin API
             eprintln!("[API Error] Code: {}, Description: {}", e.code, e.description);
             if e.code == 401 {
                 eprintln!("=> Unauthorized. Please check your credentials.");
             }
         }
-        Error::Reqwest(e) => {
+        mixin_sdk_rs::error::Error::Reqwest(e) => {
             // Error from the underlying HTTP client (e.g., network issues)
             eprintln!("[Network Error] {}", e);
         }
-        Error::Serde(e) => {
+        mixin_sdk_rs::error::Error::Serde(e) => {
             // Error during JSON serialization/deserialization
             eprintln!("[Serialization Error] {}", e);
         }
