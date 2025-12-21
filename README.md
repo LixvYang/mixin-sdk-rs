@@ -22,6 +22,7 @@
   - [Step 1: Create your Keystore File](#step-1-create-your-keystore-file)
   - [Step 2: Write Your Code](#step-2-write-your-code)
 - [Running Examples](#running-examples)
+- [Examples Index](#examples-index)
 - [Error Handling](#error-handling)
 - [License](#license)
 
@@ -107,6 +108,62 @@ For instance, to run the `get_me.rs` example:
     cargo run --example get_me --all-features
     ```
 
+## Examples Index
+
+All examples expect `TEST_KEYSTORE_PATH` unless noted otherwise.
+
+- `get_me`: Fetch `/safe/me`
+- `register_safe_user`: Register Safe user with spend key (requires a fresh user)
+- `send_message`: Send a plain text message (requires `RECIPIENT_ID`)
+- `create_group`: Create a group conversation (requires `PARTICIPANT_IDS`, optional `GROUP_NAME`/`GROUP_ANNOUNCEMENT`)
+- `list_outputs`: List unspent outputs
+- `create_address`: Create a withdrawal address (requires `ASSET_ID`, `DESTINATION`, optional `ADDRESS_LABEL`/`ADDRESS_TAG`)
+- `create_withdrawal`: Create a withdrawal (requires `ADDRESS_ID`, `AMOUNT`, `FEE`, optional `MEMO`/`TRACE_ID`)
+
+Example commands:
+
+```bash
+export TEST_KEYSTORE_PATH="/path/to/keystore.json"
+```
+
+```bash
+cargo run --example get_me --all-features
+cargo run --example register_safe_user --all-features
+```
+
+```bash
+export RECIPIENT_ID="target-user-id"
+cargo run --example send_message --all-features
+```
+
+```bash
+export PARTICIPANT_IDS="user-id-1,user-id-2"
+export GROUP_NAME="Rust SDK Group"
+export GROUP_ANNOUNCEMENT="Hello"
+cargo run --example create_group --all-features
+```
+
+```bash
+cargo run --example list_outputs --all-features
+```
+
+```bash
+export ASSET_ID="asset-id"
+export DESTINATION="destination"
+export ADDRESS_LABEL="Rust SDK"
+export ADDRESS_TAG=""
+cargo run --example create_address --all-features
+```
+
+```bash
+export ADDRESS_ID="address-id"
+export AMOUNT="1"
+export FEE="0.001"
+export MEMO="memo"
+export TRACE_ID="trace-id"
+cargo run --example create_withdrawal --all-features
+```
+
 ## Error Handling
 
 All API functions return a `Result<T, mixin_sdk_rs::error::Error>`. You can match on the `Error` enum to handle different failure scenarios.
@@ -122,11 +179,11 @@ if let Err(err) = user::request_user_me(&user).await {
                 eprintln!("=> Unauthorized. Please check your credentials.");
             }
         }
-        mixin_sdk_rs::error::Error::Reqwest(e) => {
+        mixin_sdk_rs::error::Error::Request(e) => {
             // Error from the underlying HTTP client (e.g., network issues)
             eprintln!("[Network Error] {}", e);
         }
-        mixin_sdk_rs::error::Error::Serde(e) => {
+        mixin_sdk_rs::error::Error::Json(e) => {
             // Error during JSON serialization/deserialization
             eprintln!("[Serialization Error] {}", e);
         }
@@ -140,4 +197,4 @@ if let Err(err) = user::request_user_me(&user).await {
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache-2.0 License. See the [LICENSE](LICENSE) file for details.

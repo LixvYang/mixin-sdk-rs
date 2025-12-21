@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use reqwest::{
     Client,
-    header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, USER_AGENT},
+    header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue, USER_AGENT},
 };
 use serde::Deserialize;
 use std::sync::Mutex;
@@ -72,6 +72,28 @@ pub fn set_user_agent(ua: String) {
     *USER_AGENT_STR.lock().unwrap() = ua;
 }
 
+fn build_headers(access_token: Option<&str>, request_id: Option<&str>) -> Result<HeaderMap, Error> {
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert(
+        USER_AGENT,
+        HeaderValue::from_str(&USER_AGENT_STR.lock().unwrap())?,
+    );
+    if let Some(token) = access_token {
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", token))?,
+        );
+    }
+    if let Some(request_id) = request_id {
+        headers.insert(
+            HeaderName::from_static("x-request-id"),
+            HeaderValue::from_str(request_id)?,
+        );
+    }
+    Ok(headers)
+}
+
 pub async fn request(
     method: &str,
     path: &str,
@@ -90,17 +112,7 @@ pub async fn request_with_id(
 ) -> Result<Vec<u8>, Error> {
     let uri = format!("{}{}", *HTTP_URI.lock().unwrap(), path);
 
-    let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", access_token))?,
-    );
-    headers.insert("X-Request-Id", HeaderValue::from_str(&request_id)?);
-    headers.insert(
-        USER_AGENT,
-        HeaderValue::from_str(&USER_AGENT_STR.lock().unwrap())?,
-    );
+    let headers = build_headers(Some(access_token), Some(&request_id))?;
 
     let response = HTTP_CLIENT
         .request(reqwest::Method::from_bytes(method.as_bytes())?, &uri)
@@ -125,8 +137,7 @@ pub async fn request_with_id(
 pub async fn simple_request(method: &str, path: &str, body: &[u8]) -> Result<Vec<u8>, Error> {
     let uri = format!("{}{}", *HTTP_URI.lock().unwrap(), path);
 
-    let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    let headers = build_headers(None, None)?;
     let response = HTTP_CLIENT
         .request(reqwest::Method::from_bytes(method.as_bytes())?, &uri)
         .headers(headers)
@@ -145,4 +156,30 @@ pub async fn simple_request(method: &str, path: &str, body: &[u8]) -> Result<Vec
 
     let body = response.bytes().await?;
     Ok(body.to_vec())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_headers_with_request_id() {
+        set_user_agent("test-agent".to_string());
+        let headers = build_headers(Some("token-123"), Some("req-abc")).expect("headers");
+
+        assert_eq!(
+            headers.get(USER_AGENT).unwrap(),
+            HeaderValue::from_static("test-agent")
+        );
+        assert_eq!(
+            headers
+                .get(HeaderName::from_static("x-request-id"))
+                .unwrap(),
+            HeaderValue::from_static("req-abc")
+        );
+        assert_eq!(
+            headers.get(AUTHORIZATION).unwrap(),
+            HeaderValue::from_static("Bearer token-123")
+        );
+    }
 }

@@ -11,7 +11,7 @@ use reqwest::{
     // Client,
     header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Default)]
@@ -85,6 +85,22 @@ pub static PREFERENCE_SOURCE_ALL: &str = "EVERYBODY";
 pub static PREFERENCE_SOURCE_CONTACTS: &str = "CONTACTS";
 pub static PREFERENCE_SOURCE_NO_BODY: &str = "NOBODY";
 
+#[derive(Debug, Serialize)]
+struct PreferenceUpdate<'a> {
+    receive_message_source: &'a str,
+    accept_conversation_source: &'a str,
+    fiat_currency: &'a str,
+    transfer_notification_threshold: &'a f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    transfer_confirmation_threshold: Option<&'a f64>,
+}
+
+#[derive(Debug, Serialize)]
+struct RelationshipRequest<'a> {
+    user_id: &'a str,
+    action: &'a str,
+}
+
 pub async fn create_user_simple(session_secret: &str, full_name: &str) -> Result<User, Error> {
     let data = serde_json::json!({
         "session_secret": session_secret,
@@ -109,8 +125,9 @@ pub async fn create_user_with_phone(
         "full_name": full_name,
     });
 
-    let token = sign_authentication_token("POST", "/users", data.as_str().unwrap(), safe_user)?;
-    let body = request("POST", "/users", data.to_string().as_bytes(), &token).await?;
+    let data_str = data.to_string();
+    let token = sign_authentication_token("POST", "/users", &data_str, safe_user)?;
+    let body = request("POST", "/users", data_str.as_bytes(), &token).await?;
     let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
     parsed
         .data
@@ -154,11 +171,11 @@ pub async fn get_user(safe_user: &SafeUser, user_id: &str) -> Result<User, Error
         .map_err(|e| Error::DataNotFound(e.to_string()))
 }
 
-pub async fn search_user(query: &str, safe_user: &SafeUser) -> Result<User, Error> {
+pub async fn search_user(query: &str, safe_user: &SafeUser) -> Result<Vec<User>, Error> {
     let path = "/search/".to_string() + query;
     let token = sign_authentication_token("GET", &path, "", safe_user)?;
     let body = request("GET", &path, &[], &token).await?;
-    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    let parsed: ApiResponse<Vec<User>> = serde_json::from_slice(&body)?;
     parsed
         .data
         .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
@@ -197,8 +214,9 @@ pub async fn update_user_me(
     });
 
     let path = "/me";
-    let token = sign_authentication_token("POST", path, data.as_str().unwrap(), safe_user)?;
-    let body = request("POST", path, data.to_string().as_bytes(), &token).await?;
+    let data_str = data.to_string();
+    let token = sign_authentication_token("POST", path, &data_str, safe_user)?;
+    let body = request("POST", path, data_str.as_bytes(), &token).await?;
     let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
     parsed
         .data
@@ -211,19 +229,72 @@ pub async fn update_preference(
     conversation_source: &str,
     currency: &str,
     threshold: &f64,
+    confirmation_threshold: Option<&f64>,
     safe_user: &SafeUser,
 ) -> Result<User, Error> {
-    let data = serde_json::json!({
-        "receive_message_source": message_source,
-        "accept_conversation_source": conversation_source,
-        "fiat_currency": currency,
-        "transfer_notification_threshold": threshold,
-    });
+    let data = PreferenceUpdate {
+        receive_message_source: message_source,
+        accept_conversation_source: conversation_source,
+        fiat_currency: currency,
+        transfer_notification_threshold: threshold,
+        transfer_confirmation_threshold: confirmation_threshold,
+    };
 
-    let path = "/me/preference";
-    let token = sign_authentication_token("POST", path, data.as_str().unwrap(), safe_user)?;
-    let body = request("POST", path, data.to_string().as_bytes(), &token).await?;
+    let path = "/me/preferences";
+    let data_str = serde_json::to_string(&data)?;
+    let token = sign_authentication_token("POST", path, &data_str, safe_user)?;
+    let body = request("POST", path, data_str.as_bytes(), &token).await?;
     let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn relationship(user_id: &str, action: &str, safe_user: &SafeUser) -> Result<User, Error> {
+    let data = RelationshipRequest { user_id, action };
+    let path = "/relationships";
+    let data_str = serde_json::to_string(&data)?;
+    let token = sign_authentication_token("POST", path, &data_str, safe_user)?;
+    let body = request("POST", path, data_str.as_bytes(), &token).await?;
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn get_friends(safe_user: &SafeUser) -> Result<Vec<User>, Error> {
+    let path = "/friends";
+    let token = sign_authentication_token("GET", path, "", safe_user)?;
+    let body = request("GET", path, &[], &token).await?;
+    let parsed: ApiResponse<Vec<User>> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn get_blocking_users(safe_user: &SafeUser) -> Result<Vec<User>, Error> {
+    let path = "/blocking_users";
+    let token = sign_authentication_token("GET", path, "", safe_user)?;
+    let body = request("GET", path, &[], &token).await?;
+    let parsed: ApiResponse<Vec<User>> = serde_json::from_slice(&body)?;
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+        .map_err(|e| Error::DataNotFound(e.to_string()))
+}
+
+pub async fn get_users(safe_user: &SafeUser, user_ids: &[String]) -> Result<Vec<User>, Error> {
+    let data = serde_json::json!({
+        "user_ids": user_ids,
+    });
+    let path = "/users/fetch";
+    let data_str = data.to_string();
+    let token = sign_authentication_token("POST", path, &data_str, safe_user)?;
+    let body = request("POST", path, data_str.as_bytes(), &token).await?;
+    let parsed: ApiResponse<Vec<User>> = serde_json::from_slice(&body)?;
     parsed
         .data
         .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
@@ -252,5 +323,33 @@ mod tests {
                 panic!("Failed to get user: {}", e);
             }
         }
+    }
+
+    #[test]
+    fn test_preference_update_serialization() {
+        let data = PreferenceUpdate {
+            receive_message_source: PREFERENCE_SOURCE_ALL,
+            accept_conversation_source: PREFERENCE_SOURCE_CONTACTS,
+            fiat_currency: "USD",
+            transfer_notification_threshold: &10.0,
+            transfer_confirmation_threshold: None,
+        };
+        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&data).unwrap()).unwrap();
+        assert_eq!(value["receive_message_source"], "EVERYBODY");
+        assert_eq!(value["accept_conversation_source"], "CONTACTS");
+        assert_eq!(value["fiat_currency"], "USD");
+        assert_eq!(value["transfer_notification_threshold"], 10.0);
+        assert!(value.get("transfer_confirmation_threshold").is_none());
+    }
+
+    #[test]
+    fn test_relationship_request_serialization() {
+        let data = RelationshipRequest {
+            user_id: "user-id",
+            action: RELATIONSHIP_ACTION_ADD,
+        };
+        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&data).unwrap()).unwrap();
+        assert_eq!(value["user_id"], "user-id");
+        assert_eq!(value["action"], "ADD");
     }
 }

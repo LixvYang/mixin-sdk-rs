@@ -1,5 +1,6 @@
 use crate::auth::AuthError;
 use crate::request::ApiError;
+use hex::FromHexError;
 use http::method::InvalidMethod;
 use reqwest::header::InvalidHeaderValue;
 use thiserror::Error;
@@ -55,5 +56,11 @@ impl From<InvalidHeaderValue> for Error {
 impl From<InvalidMethod> for Error {
     fn from(err: InvalidMethod) -> Self {
         Error::Server(err.to_string())
+    }
+}
+
+impl From<FromHexError> for Error {
+    fn from(err: FromHexError) -> Self {
+        Error::Input(err.to_string())
     }
 }

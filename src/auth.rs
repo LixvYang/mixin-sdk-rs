@@ -187,6 +187,61 @@ pub struct OAuthError {
     pub description: String,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::engine::general_purpose;
+    use sha2::{Digest, Sha256};
+
+    fn test_user() -> SafeUser {
+        SafeUser {
+            user_id: "user-id".to_string(),
+            session_id: "session-id".to_string(),
+            session_private_key: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+                .to_string(),
+            server_public_key: "server-public-key".to_string(),
+            spend_private_key: "spend-private-key".to_string(),
+            is_spend_private_sum: false,
+        }
+    }
+
+    #[test]
+    fn test_sign_authentication_token_claims() {
+        let user = test_user();
+        let method = "POST";
+        let uri = "/test";
+        let body = "{\"hello\":\"world\"}";
+        let request_id = "req-123";
+
+        let token = sign_authentication_token_with_request_id(
+            method,
+            uri,
+            body,
+            request_id.to_string(),
+            &user,
+        )
+        .expect("token");
+
+        let parts: Vec<&str> = token.split('.').collect();
+        assert_eq!(parts.len(), 3);
+
+        let claims_bytes = general_purpose::URL_SAFE_NO_PAD
+            .decode(parts[1])
+            .expect("claims b64");
+        let claims: JwtClaims = serde_json::from_slice(&claims_bytes).expect("claims json");
+
+        let mut hasher = Sha256::new();
+        hasher.update((method.to_string() + uri + body).as_bytes());
+        let expected_sig = hex::encode(hasher.finalize());
+
+        assert_eq!(claims.uid.as_deref(), Some("user-id"));
+        assert_eq!(claims.sid.as_deref(), Some("session-id"));
+        assert_eq!(claims.jti, request_id);
+        assert_eq!(claims.sig, expected_sig);
+        assert_eq!(claims.scp, "FULL");
+    }
+}
+
 pub async fn oauth_get_access_token(
     client_id: &str,
     client_secret: &str,
