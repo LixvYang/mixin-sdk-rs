@@ -75,7 +75,8 @@ mod tests {
             representative_id: None,
             quote_message_id: Some("quote-id".to_string()),
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
         assert_eq!(value["conversation_id"], "conversation-id");
         assert_eq!(value["message_id"], "message-id");
         assert_eq!(value["category"], "PLAIN_TEXT");
@@ -90,7 +91,8 @@ mod tests {
             message_id: "message-id".to_string(),
             status: "READ".to_string(),
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&ack).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&ack).unwrap()).unwrap();
         assert_eq!(value["message_id"], "message-id");
         assert_eq!(value["status"], "READ");
     }

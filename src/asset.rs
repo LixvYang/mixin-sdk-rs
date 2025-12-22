@@ -90,9 +90,9 @@ pub async fn read_network_assets() -> Result<Vec<AssetNetwork>, Error> {
     let body = request("GET", path, &[], "").await?;
 
     let parsed: ApiResponse<Vec<AssetNetwork>> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain network assets".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain network assets".to_string())
+    })
 }
 
 pub async fn read_network_assets_top() -> Result<Vec<AssetNetwork>, Error> {
@@ -100,9 +100,9 @@ pub async fn read_network_assets_top() -> Result<Vec<AssetNetwork>, Error> {
     let body = request("GET", path, &[], "").await?;
 
     let parsed: ApiResponse<Vec<AssetNetwork>> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain network assets".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain network assets".to_string())
+    })
 }
 
 pub async fn read_network_asset(asset_id: &str) -> Result<AssetNetwork, Error> {
@@ -110,9 +110,9 @@ pub async fn read_network_asset(asset_id: &str) -> Result<AssetNetwork, Error> {
     let body = request("GET", &path, &[], "").await?;
 
     let parsed: ApiResponse<AssetNetwork> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain network asset".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain network asset".to_string())
+    })
 }
 
 #[cfg(test)]

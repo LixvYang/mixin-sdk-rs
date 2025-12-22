@@ -1,4 +1,4 @@
-use mixin_sdk_rs::address::{create_address, AddressInput};
+use mixin_sdk_rs::address::{AddressInput, create_address};
 use mixin_sdk_rs::safe::SafeUser;
 
 #[tokio::main]

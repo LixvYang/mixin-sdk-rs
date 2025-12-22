@@ -1,4 +1,4 @@
-use mixin_sdk_rs::conversation::{create_group_conversation, Participant};
+use mixin_sdk_rs::conversation::{Participant, create_group_conversation};
 use mixin_sdk_rs::safe::SafeUser;
 
 #[tokio::main]
@@ -19,7 +19,9 @@ async fn main() -> Result<(), mixin_sdk_rs::error::Error> {
         .collect();
 
     if participants.is_empty() {
-        return Err(mixin_sdk_rs::error::Error::Input("no participants provided".to_string()));
+        return Err(mixin_sdk_rs::error::Error::Input(
+            "no participants provided".to_string(),
+        ));
     }
 
     let name = std::env::var("GROUP_NAME").unwrap_or_else(|_| "Rust SDK Group".to_string());

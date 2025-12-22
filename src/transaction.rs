@@ -56,9 +56,9 @@ pub async fn create_transaction_request(
     let body = request("POST", path, data_str.as_bytes(), &token).await?;
 
     let parsed: ApiResponse<TransactionView> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain transaction data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain transaction data".to_string())
+    })
 }
 
 pub async fn submit_transaction(
@@ -76,20 +76,23 @@ pub async fn submit_transaction(
     let body = request("POST", path, data_str.as_bytes(), &token).await?;
 
     let parsed: ApiResponse<TransactionView> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain transaction data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain transaction data".to_string())
+    })
 }
 
-pub async fn get_transaction(request_id: &str, safe_user: &SafeUser) -> Result<TransactionView, Error> {
+pub async fn get_transaction(
+    request_id: &str,
+    safe_user: &SafeUser,
+) -> Result<TransactionView, Error> {
     let path = format!("/safe/transactions/{request_id}");
     let token = sign_authentication_token("GET", &path, "", safe_user)?;
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<TransactionView> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain transaction data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain transaction data".to_string())
+    })
 }
 
 #[cfg(test)]
@@ -102,7 +105,8 @@ mod tests {
             request_id: "request-id".to_string(),
             raw: "raw".to_string(),
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
         assert_eq!(value["request_id"], "request-id");
         assert_eq!(value["raw"], "raw");
     }
@@ -113,7 +117,8 @@ mod tests {
             request_id: "request-id".to_string(),
             signed_raw: "signed".to_string(),
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
         assert_eq!(value["request_id"], "request-id");
         assert_eq!(value["signed_raw"], "signed");
     }

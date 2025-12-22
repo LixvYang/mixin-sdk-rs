@@ -65,7 +65,8 @@ mod tests {
             memo: Some("memo".to_string()),
             trace_id: Some("trace".to_string()),
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
         assert_eq!(value["amount"], "1");
         assert_eq!(value["asset_id"], "asset-id");
         assert_eq!(value["memo"], "memo");

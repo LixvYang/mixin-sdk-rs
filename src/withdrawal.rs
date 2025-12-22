@@ -45,7 +45,11 @@ pub async fn create_withdrawal(
     safe_user: &SafeUser,
 ) -> Result<WithdrawalView, Error> {
     let tip_body = tip_body_for_withdrawal(address_id, amount, fee, trace_id, memo.unwrap_or(""));
-    let pin = sign_tip_body(&tip_body, &safe_user.spend_private_key, safe_user.is_spend_private_sum)?;
+    let pin = sign_tip_body(
+        &tip_body,
+        &safe_user.spend_private_key,
+        safe_user.is_spend_private_sum,
+    )?;
     let pin_base64 = encrypt_ed25519_pin(&pin, now_nanos()?, safe_user)?;
 
     let data = WithdrawalRequest {
@@ -61,9 +65,9 @@ pub async fn create_withdrawal(
     let body = request("POST", path, data_str.as_bytes(), &token).await?;
 
     let parsed: ApiResponse<WithdrawalView> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain withdrawal data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain withdrawal data".to_string())
+    })
 }
 
 fn now_nanos() -> Result<u64, Error> {
@@ -87,7 +91,8 @@ mod tests {
             memo: Some("memo".to_string()),
             pin_base64: Some("pin".to_string()),
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
         assert_eq!(value["address_id"], "address-id");
         assert_eq!(value["amount"], "1");
         assert_eq!(value["trace_id"], "trace-id");

@@ -18,18 +18,24 @@ pub struct CollectibleOutputQuery {
     pub limit: Option<u32>,
 }
 
-pub async fn read_collectible_token(token_id: &str, safe_user: &SafeUser) -> Result<CollectibleToken, Error> {
+pub async fn read_collectible_token(
+    token_id: &str,
+    safe_user: &SafeUser,
+) -> Result<CollectibleToken, Error> {
     let path = format!("/collectibles/tokens/{token_id}");
     let token = sign_authentication_token("GET", &path, "", safe_user)?;
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<CollectibleToken> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain collectible token".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain collectible token".to_string())
+    })
 }
 
-pub async fn list_collectible_outputs(query: &CollectibleOutputQuery, safe_user: &SafeUser) -> Result<Vec<CollectibleOutput>, Error> {
+pub async fn list_collectible_outputs(
+    query: &CollectibleOutputQuery,
+    safe_user: &SafeUser,
+) -> Result<Vec<CollectibleOutput>, Error> {
     let mut serializer = form_urlencoded::Serializer::new(String::new());
     serializer.append_pair("members", &query.members);
     serializer.append_pair("threshold", &query.threshold.to_string());
@@ -47,9 +53,9 @@ pub async fn list_collectible_outputs(query: &CollectibleOutputQuery, safe_user:
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<Vec<CollectibleOutput>> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain collectible outputs".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain collectible outputs".to_string())
+    })
 }
 
 #[cfg(test)]

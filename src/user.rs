@@ -251,7 +251,11 @@ pub async fn update_preference(
         .map_err(|e| Error::DataNotFound(e.to_string()))
 }
 
-pub async fn relationship(user_id: &str, action: &str, safe_user: &SafeUser) -> Result<User, Error> {
+pub async fn relationship(
+    user_id: &str,
+    action: &str,
+    safe_user: &SafeUser,
+) -> Result<User, Error> {
     let data = RelationshipRequest { user_id, action };
     let path = "/relationships";
     let data_str = serde_json::to_string(&data)?;
@@ -334,7 +338,8 @@ mod tests {
             transfer_notification_threshold: &10.0,
             transfer_confirmation_threshold: None,
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&data).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&data).unwrap()).unwrap();
         assert_eq!(value["receive_message_source"], "EVERYBODY");
         assert_eq!(value["accept_conversation_source"], "CONTACTS");
         assert_eq!(value["fiat_currency"], "USD");
@@ -348,7 +353,8 @@ mod tests {
             user_id: "user-id",
             action: RELATIONSHIP_ACTION_ADD,
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&data).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&data).unwrap()).unwrap();
         assert_eq!(value["user_id"], "user-id");
         assert_eq!(value["action"], "ADD");
     }

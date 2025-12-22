@@ -98,7 +98,8 @@ pub async fn create_group_conversation(
 ) -> Result<Conversation, Error> {
     let random_id = Uuid::new_v4().to_string();
     let participant_ids: Vec<String> = participants.iter().map(|p| p.user_id.clone()).collect();
-    let conversation_id = group_conversation_id(&safe_user.user_id, name, &participant_ids, &random_id);
+    let conversation_id =
+        group_conversation_id(&safe_user.user_id, name, &participant_ids, &random_id);
 
     create_conversation(
         "GROUP",
@@ -141,40 +142,49 @@ pub async fn create_conversation(
     let body = request("POST", path, data_str.as_bytes(), &token).await?;
 
     let parsed: ApiResponse<Conversation> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain conversation data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain conversation data".to_string())
+    })
 }
 
-pub async fn get_conversation(conversation_id: &str, safe_user: &SafeUser) -> Result<Conversation, Error> {
+pub async fn get_conversation(
+    conversation_id: &str,
+    safe_user: &SafeUser,
+) -> Result<Conversation, Error> {
     let path = format!("/conversations/{conversation_id}");
     let token = sign_authentication_token("GET", &path, "", safe_user)?;
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<Conversation> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain conversation data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain conversation data".to_string())
+    })
 }
 
-pub async fn join_conversation(conversation_id: &str, safe_user: &SafeUser) -> Result<Conversation, Error> {
+pub async fn join_conversation(
+    conversation_id: &str,
+    safe_user: &SafeUser,
+) -> Result<Conversation, Error> {
     let path = format!("/conversations/{conversation_id}/join");
     let token = sign_authentication_token("POST", &path, "", safe_user)?;
     let body = request("POST", &path, &[], &token).await?;
     let parsed: ApiResponse<Conversation> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain conversation data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain conversation data".to_string())
+    })
 }
 
-pub async fn rotate_conversation(conversation_id: &str, safe_user: &SafeUser) -> Result<Conversation, Error> {
+pub async fn rotate_conversation(
+    conversation_id: &str,
+    safe_user: &SafeUser,
+) -> Result<Conversation, Error> {
     let path = format!("/conversations/{conversation_id}/rotate");
     let token = sign_authentication_token("POST", &path, "", safe_user)?;
     let body = request("POST", &path, &[], &token).await?;
     let parsed: ApiResponse<Conversation> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain conversation data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain conversation data".to_string())
+    })
 }
 
 pub async fn update_participants(
@@ -189,9 +199,9 @@ pub async fn update_participants(
     let body = request("POST", &path, data_str.as_bytes(), &token).await?;
 
     let parsed: ApiResponse<Conversation> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain conversation data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain conversation data".to_string())
+    })
 }
 
 pub async fn mute_conversation(
@@ -206,9 +216,9 @@ pub async fn mute_conversation(
     let body = request("POST", &path, data_str.as_bytes(), &token).await?;
 
     let parsed: ApiResponse<Conversation> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain conversation data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain conversation data".to_string())
+    })
 }
 
 #[cfg(test)]
@@ -230,7 +240,8 @@ mod tests {
             participants,
             random_id: Some("random-id".to_string()),
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
         assert_eq!(value["category"], "GROUP");
         assert_eq!(value["conversation_id"], "conversation-id");
         assert_eq!(value["name"], "Group");

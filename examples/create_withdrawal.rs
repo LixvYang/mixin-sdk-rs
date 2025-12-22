@@ -14,7 +14,18 @@ async fn main() -> Result<(), mixin_sdk_rs::error::Error> {
     let memo = std::env::var("MEMO").ok();
 
     let trace_id = std::env::var("TRACE_ID").unwrap_or_else(|_| Uuid::new_v4().to_string());
-    let withdrawal = create_withdrawal(&address_id, &amount, &fee, &trace_id, memo.as_deref(), &user).await?;
-    println!("withdrawal id: {}", withdrawal.withdrawal_id.unwrap_or_default());
+    let withdrawal = create_withdrawal(
+        &address_id,
+        &amount,
+        &fee,
+        &trace_id,
+        memo.as_deref(),
+        &user,
+    )
+    .await?;
+    println!(
+        "withdrawal id: {}",
+        withdrawal.withdrawal_id.unwrap_or_default()
+    );
     Ok(())
 }

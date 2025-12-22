@@ -7,7 +7,7 @@ use crate::{
     pin::encrypt_ed25519_pin,
     request::{ApiResponse, request},
     safe::SafeUser,
-    tip::{sign_tip_body, tip_body, tip_body_for_address_add, TIP_ADDRESS_REMOVE},
+    tip::{TIP_ADDRESS_REMOVE, sign_tip_body, tip_body, tip_body_for_address_add},
 };
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
@@ -43,9 +43,17 @@ pub struct AddressInput<'a> {
     pub tag: &'a str,
 }
 
-pub async fn create_address(input: &AddressInput<'_>, safe_user: &SafeUser) -> Result<Address, Error> {
-    let tip_body = tip_body_for_address_add(input.asset_id, input.destination, input.tag, input.label);
-    let pin = sign_tip_body(&tip_body, &safe_user.spend_private_key, safe_user.is_spend_private_sum)?;
+pub async fn create_address(
+    input: &AddressInput<'_>,
+    safe_user: &SafeUser,
+) -> Result<Address, Error> {
+    let tip_body =
+        tip_body_for_address_add(input.asset_id, input.destination, input.tag, input.label);
+    let pin = sign_tip_body(
+        &tip_body,
+        &safe_user.spend_private_key,
+        safe_user.is_spend_private_sum,
+    )?;
     let pin_base64 = encrypt_ed25519_pin(&pin, now_nanos()?, safe_user)?;
 
     let data = serde_json::json!({
@@ -79,7 +87,11 @@ pub async fn read_address(address_id: &str, safe_user: &SafeUser) -> Result<Addr
 
 pub async fn delete_address(address_id: &str, safe_user: &SafeUser) -> Result<(), Error> {
     let tip = tip_body(&(TIP_ADDRESS_REMOVE.to_string() + address_id));
-    let pin = sign_tip_body(&tip, &safe_user.spend_private_key, safe_user.is_spend_private_sum)?;
+    let pin = sign_tip_body(
+        &tip,
+        &safe_user.spend_private_key,
+        safe_user.is_spend_private_sum,
+    )?;
     let pin_base64 = encrypt_ed25519_pin(&pin, now_nanos()?, safe_user)?;
 
     let data = serde_json::json!({
@@ -98,7 +110,10 @@ pub async fn delete_address(address_id: &str, safe_user: &SafeUser) -> Result<()
     Ok(())
 }
 
-pub async fn list_addresses_by_asset(asset_id: &str, safe_user: &SafeUser) -> Result<Vec<Address>, Error> {
+pub async fn list_addresses_by_asset(
+    asset_id: &str,
+    safe_user: &SafeUser,
+) -> Result<Vec<Address>, Error> {
     let path = format!("/assets/{asset_id}/addresses");
     let token = sign_authentication_token("GET", &path, "", safe_user)?;
     let body = request("GET", &path, &[], &token).await?;
@@ -109,7 +124,11 @@ pub async fn list_addresses_by_asset(asset_id: &str, safe_user: &SafeUser) -> Re
         .ok_or_else(|| Error::DataNotFound("API response did not contain address data".to_string()))
 }
 
-pub async fn check_address(asset: &str, destination: &str, tag: Option<&str>) -> Result<SimpleAddress, Error> {
+pub async fn check_address(
+    asset: &str,
+    destination: &str,
+    tag: Option<&str>,
+) -> Result<SimpleAddress, Error> {
     let mut serializer = form_urlencoded::Serializer::new(String::new());
     serializer.append_pair("asset", asset);
     serializer.append_pair("destination", destination);
@@ -148,7 +167,8 @@ mod tests {
             destination: "dest",
             tag: "tag",
         };
-        let value: serde_json::Value = serde_json::from_str(&serde_json::to_string(&input).unwrap()).unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&input).unwrap()).unwrap();
         assert_eq!(value["asset_id"], "asset-id");
         assert_eq!(value["label"], "label");
         assert_eq!(value["destination"], "dest");

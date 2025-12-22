@@ -30,7 +30,10 @@ fn public_key_to_curve25519(public_key: &[u8; 32]) -> Result<[u8; 32], Error> {
     Ok(point.to_montgomery().to_bytes())
 }
 
-fn shared_key(session_private_key: &[u8; 32], server_public_key: &[u8; 32]) -> Result<[u8; 32], Error> {
+fn shared_key(
+    session_private_key: &[u8; 32],
+    server_public_key: &[u8; 32],
+) -> Result<[u8; 32], Error> {
     let curve_private = private_key_to_curve25519(session_private_key);
     let curve_public = public_key_to_curve25519(server_public_key)?;
 
@@ -45,7 +48,11 @@ fn unix_seconds() -> Result<u64, Error> {
         .as_secs())
 }
 
-pub fn encrypt_ed25519_pin(pin_hex: &str, iterator: u64, current: &SafeUser) -> Result<String, Error> {
+pub fn encrypt_ed25519_pin(
+    pin_hex: &str,
+    iterator: u64,
+    current: &SafeUser,
+) -> Result<String, Error> {
     encrypt_ed25519_pin_with_time(pin_hex, iterator, current, unix_seconds()?)
 }
 
@@ -109,7 +116,8 @@ mod tests {
         SafeUser {
             user_id: "user-id".to_string(),
             session_id: "session-id".to_string(),
-            session_private_key: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".to_string(),
+            session_private_key: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+                .to_string(),
             server_public_key,
             spend_private_key: "spend-private-key".to_string(),
             is_spend_private_sum: false,
@@ -132,8 +140,8 @@ mod tests {
         let pin_hex = "aabbccddeeff";
         let iterator = 42u64;
         let now_seconds = 1_700_000_000u64;
-        let encoded = encrypt_ed25519_pin_with_time(pin_hex, iterator, &user, now_seconds)
-            .expect("encrypt");
+        let encoded =
+            encrypt_ed25519_pin_with_time(pin_hex, iterator, &user, now_seconds).expect("encrypt");
 
         let payload = URL_SAFE_NO_PAD.decode(encoded).expect("decode");
         assert!(payload.len() > 16);

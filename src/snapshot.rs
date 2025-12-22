@@ -20,7 +20,10 @@ pub struct SnapshotQuery {
     pub order: Option<String>,
 }
 
-pub async fn list_snapshots(query: &SnapshotQuery, safe_user: &SafeUser) -> Result<Vec<Snapshot>, Error> {
+pub async fn list_snapshots(
+    query: &SnapshotQuery,
+    safe_user: &SafeUser,
+) -> Result<Vec<Snapshot>, Error> {
     let mut serializer = form_urlencoded::Serializer::new(String::new());
     if let Some(offset) = &query.offset {
         serializer.append_pair("offset", offset);
@@ -48,9 +51,9 @@ pub async fn list_snapshots(query: &SnapshotQuery, safe_user: &SafeUser) -> Resu
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<Vec<Snapshot>> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain snapshot data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain snapshot data".to_string())
+    })
 }
 
 pub async fn read_snapshot(snapshot_id: &str, safe_user: &SafeUser) -> Result<Snapshot, Error> {
@@ -59,9 +62,9 @@ pub async fn read_snapshot(snapshot_id: &str, safe_user: &SafeUser) -> Result<Sn
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<Snapshot> = serde_json::from_slice(&body)?;
-    parsed
-        .data
-        .ok_or_else(|| Error::DataNotFound("API response did not contain snapshot data".to_string()))
+    parsed.data.ok_or_else(|| {
+        Error::DataNotFound("API response did not contain snapshot data".to_string())
+    })
 }
 
 #[cfg(test)]

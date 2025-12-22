@@ -9,8 +9,8 @@ use crate::{
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::Signer;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
-use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -169,7 +169,11 @@ pub async fn register_safe_user(safe_user: &SafeUser) -> Result<User, Error> {
     let timestamp = unix_nanos()?;
 
     let tip_body = tip_body_for_sequencer_register(&safe_user.user_id, &public_key);
-    let tip_signature = sign_tip_body(&tip_body, &safe_user.spend_private_key, safe_user.is_spend_private_sum)?;
+    let tip_signature = sign_tip_body(
+        &tip_body,
+        &safe_user.spend_private_key,
+        safe_user.is_spend_private_sum,
+    )?;
     let pin_base64 = encrypt_ed25519_pin(&tip_signature, timestamp, safe_user)?;
 
     let data = serde_json::json!({
@@ -192,7 +196,11 @@ pub async fn register_safe_user(safe_user: &SafeUser) -> Result<User, Error> {
 pub async fn verify_tip(safe_user: &SafeUser) -> Result<User, Error> {
     let timestamp = unix_nanos()? as i64;
     let tip_body = tip_body_for_verify(timestamp);
-    let tip_signature = sign_tip_body(&tip_body, &safe_user.spend_private_key, safe_user.is_spend_private_sum)?;
+    let tip_signature = sign_tip_body(
+        &tip_body,
+        &safe_user.spend_private_key,
+        safe_user.is_spend_private_sum,
+    )?;
     let pin_base64 = encrypt_ed25519_pin(&tip_signature, timestamp as u64, safe_user)?;
 
     let data = serde_json::json!({
@@ -262,7 +270,10 @@ mod tests {
         );
         let public_key = spend_public_key_hex(&safe_user).expect("pub");
         let signing_key = SigningKey::from_bytes(&hex::decode(seed).unwrap().try_into().unwrap());
-        assert_eq!(public_key, hex::encode(signing_key.verifying_key().to_bytes()));
+        assert_eq!(
+            public_key,
+            hex::encode(signing_key.verifying_key().to_bytes())
+        );
     }
 
     #[test]

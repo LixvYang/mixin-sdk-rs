@@ -1,6 +1,6 @@
-use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
-use mixin_sdk_rs::message::{post_message, MessageRequest};
+use base64::engine::general_purpose::STANDARD;
+use mixin_sdk_rs::message::{MessageRequest, post_message};
 use mixin_sdk_rs::safe::SafeUser;
 use mixin_sdk_rs::utils::unique_conversation_id;
 use uuid::Uuid;

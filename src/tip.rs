@@ -37,19 +37,36 @@ pub fn tip_body_for_sequencer_register(user_id: &str, public_key: &str) -> Vec<u
     tip_body(&format!("{TIP_SEQUENCER_REGISTER}{user_id}{public_key}"))
 }
 
-pub fn tip_body_for_address_add(asset_id: &str, destination: &str, tag: &str, label: &str) -> Vec<u8> {
+pub fn tip_body_for_address_add(
+    asset_id: &str,
+    destination: &str,
+    tag: &str,
+    label: &str,
+) -> Vec<u8> {
     tip_body(&format!(
         "{TIP_ADDRESS_ADD}{asset_id}{destination}{tag}{label}"
     ))
 }
 
-pub fn tip_body_for_transfer(asset_id: &str, opponent_id: &str, amount: &str, trace_id: &str, memo: &str) -> Vec<u8> {
+pub fn tip_body_for_transfer(
+    asset_id: &str,
+    opponent_id: &str,
+    amount: &str,
+    trace_id: &str,
+    memo: &str,
+) -> Vec<u8> {
     tip_body(&format!(
         "{TIP_TRANSFER_CREATE}{asset_id}{opponent_id}{amount}{trace_id}{memo}"
     ))
 }
 
-pub fn tip_body_for_withdrawal(address_id: &str, amount: &str, fee: &str, trace_id: &str, memo: &str) -> Vec<u8> {
+pub fn tip_body_for_withdrawal(
+    address_id: &str,
+    amount: &str,
+    fee: &str,
+    trace_id: &str,
+    memo: &str,
+) -> Vec<u8> {
     tip_body(&format!(
         "{TIP_WITHDRAWAL_CREATE}{address_id}{amount}{fee}{trace_id}{memo}"
     ))
@@ -77,7 +94,11 @@ pub fn tip_body_for_raw_transaction(
     tip_body(&(TIP_RAW_TRANSACTION_CREATE.to_string() + &body))
 }
 
-pub fn sign_tip_body(body: &[u8], spend_private_key: &str, _is_spend_private_sum: bool) -> Result<String, Error> {
+pub fn sign_tip_body(
+    body: &[u8],
+    spend_private_key: &str,
+    _is_spend_private_sum: bool,
+) -> Result<String, Error> {
     let key_bytes = hex::decode(spend_private_key)?;
     let seed = match key_bytes.len() {
         32 => key_bytes,
@@ -97,7 +118,7 @@ pub fn sign_tip_body(body: &[u8], spend_private_key: &str, _is_spend_private_sum
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Verifier};
+    use ed25519_dalek::{Signature, SigningKey, Verifier, VerifyingKey};
 
     #[test]
     fn test_tip_body_for_sequencer_register() {

@@ -1,5 +1,5 @@
-use mixin_sdk_rs::safe::register_safe_user;
 use mixin_sdk_rs::safe::SafeUser;
+use mixin_sdk_rs::safe::register_safe_user;
 
 #[tokio::main]
 async fn main() -> Result<(), mixin_sdk_rs::error::Error> {
