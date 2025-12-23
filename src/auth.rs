@@ -187,6 +187,50 @@ pub struct OAuthError {
     pub description: String,
 }
 
+pub async fn oauth_get_access_token(
+    client_id: &str,
+    client_secret: &str,
+    authorization_code: &str,
+    code_verifier: &str,
+    ed25519: Option<&str>,
+) -> Result<(String, String, Option<String>), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+
+    let mut params = serde_json::json!({
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "code": authorization_code,
+        "code_verifier": code_verifier,
+    });
+
+    if let Some(ed25519) = ed25519 {
+        params["ed25519"] = serde_json::Value::String(ed25519.to_string());
+    }
+
+    let response = client
+        .post("https://api.mixin.one/oauth/token")
+        .json(&params)
+        .send()
+        .await?;
+
+    let oauth_response: OAuthTokenResponse = response.json().await?;
+
+    if let Some(error) = oauth_response.error {
+        return Err(format!("OAuth error: {}", error.description).into());
+    }
+
+    let data = oauth_response.data;
+    if ed25519.is_none() {
+        return Ok((data.access_token, data.scope, None));
+    }
+
+    Ok((
+        data.ed25519.unwrap_or_default(),
+        data.scope,
+        data.authorization_id,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,48 +284,4 @@ mod tests {
         assert_eq!(claims.sig, expected_sig);
         assert_eq!(claims.scp, "FULL");
     }
-}
-
-pub async fn oauth_get_access_token(
-    client_id: &str,
-    client_secret: &str,
-    authorization_code: &str,
-    code_verifier: &str,
-    ed25519: Option<&str>,
-) -> Result<(String, String, Option<String>), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-
-    let mut params = serde_json::json!({
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "code": authorization_code,
-        "code_verifier": code_verifier,
-    });
-
-    if let Some(ed25519) = ed25519 {
-        params["ed25519"] = serde_json::Value::String(ed25519.to_string());
-    }
-
-    let response = client
-        .post("https://api.mixin.one/oauth/token")
-        .json(&params)
-        .send()
-        .await?;
-
-    let oauth_response: OAuthTokenResponse = response.json().await?;
-
-    if let Some(error) = oauth_response.error {
-        return Err(format!("OAuth error: {}", error.description).into());
-    }
-
-    let data = oauth_response.data;
-    if ed25519.is_none() {
-        return Ok((data.access_token, data.scope, None));
-    }
-
-    Ok((
-        data.ed25519.unwrap_or_default(),
-        data.scope,
-        data.authorization_id,
-    ))
 }

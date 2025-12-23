@@ -32,20 +32,14 @@ pub async fn list_outputs(
     serializer.append_pair("members", members_hash);
     serializer.append_pair("threshold", &threshold.to_string());
     serializer.append_pair("limit", &limit.unwrap_or(500).to_string());
-    if let Some(offset) = offset {
-        if offset > 0 {
-            serializer.append_pair("offset", &offset.to_string());
-        }
+    if let Some(offset) = offset && offset > 0 {
+        serializer.append_pair("offset", &offset.to_string());
     }
-    if let Some(asset_id) = asset_id {
-        if !asset_id.is_empty() {
-            serializer.append_pair("asset", asset_id);
-        }
+    if let Some(asset_id) = asset_id && !asset_id.is_empty() {
+        serializer.append_pair("asset", asset_id);
     }
-    if let Some(state) = state {
-        if !state.is_empty() {
-            serializer.append_pair("state", state);
-        }
+    if let Some(state) = state && !state.is_empty() {
+        serializer.append_pair("state", state);
     }
 
     let query = serializer.finish();

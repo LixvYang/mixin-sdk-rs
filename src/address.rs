@@ -132,10 +132,8 @@ pub async fn check_address(
     let mut serializer = form_urlencoded::Serializer::new(String::new());
     serializer.append_pair("asset", asset);
     serializer.append_pair("destination", destination);
-    if let Some(tag) = tag {
-        if !tag.is_empty() {
-            serializer.append_pair("tag", tag);
-        }
+    if let Some(tag) = tag && !tag.is_empty() {
+        serializer.append_pair("tag", tag);
     }
     let query = serializer.finish();
     let path = format!("/external/addresses/check?{query}");

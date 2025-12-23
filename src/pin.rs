@@ -97,7 +97,7 @@ fn encrypt_ed25519_pin_with_time(
 
     let mut payload = Vec::with_capacity(iv.len() + encrypted.len());
     payload.extend_from_slice(&iv);
-    payload.extend_from_slice(&encrypted);
+    payload.extend_from_slice(encrypted);
 
     Ok(general_purpose::URL_SAFE_NO_PAD.encode(payload))
 }
