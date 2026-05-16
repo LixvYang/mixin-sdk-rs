@@ -1,30 +1,83 @@
-use base64::Engine as _;
-use base64::engine::general_purpose::STANDARD;
-use mixin_sdk_rs::message::{MessageRequest, post_message};
-use mixin_sdk_rs::safe::SafeUser;
-use mixin_sdk_rs::utils::unique_conversation_id;
-use uuid::Uuid;
+use mixin_sdk_rs::Client;
+use mixin_sdk_rs::error::Error;
+
+#[derive(Debug)]
+struct Args {
+    keystore: String,
+    recipient: String,
+    text: String,
+}
 
 #[tokio::main]
-async fn main() -> Result<(), mixin_sdk_rs::error::Error> {
-    let user = SafeUser::new_from_env()?;
-    let recipient_id = std::env::var("RECIPIENT_ID")
-        .map_err(|_| mixin_sdk_rs::error::Error::Input("RECIPIENT_ID is not set".to_string()))?;
+async fn main() -> Result<(), Error> {
+    let args = parse_args()?;
+    let client = Client::from_keystore_file(&args.keystore)?;
+    let recipient = resolve_recipient(&args.recipient, &client).await?;
 
-    let conversation_id = unique_conversation_id(&user.user_id, &recipient_id);
-    let data = STANDARD.encode("hello from rust sdk");
-
-    let message = MessageRequest {
-        conversation_id,
-        recipient_id: Some(recipient_id),
-        message_id: Uuid::new_v4().to_string(),
-        category: "PLAIN_TEXT".to_string(),
-        data_base64: data,
-        representative_id: None,
-        quote_message_id: None,
-    };
-
-    post_message(message, &user).await?;
-    println!("message sent");
+    let message = client.send_text_message(&recipient, &args.text).await?;
+    println!("message_id: {}", message.message_id);
+    println!("conversation_id: {}", message.conversation_id);
     Ok(())
+}
+
+async fn resolve_recipient(recipient: &str, client: &Client) -> Result<String, Error> {
+    if recipient == "app-creator" || recipient == "creator" {
+        return client.app_creator_id().await;
+    }
+    Ok(recipient.to_string())
+}
+
+fn parse_args() -> Result<Args, Error> {
+    let mut keystore = None;
+    let mut recipient = None;
+    let mut text = "hello from rust sdk".to_string();
+
+    let mut iter = std::env::args().skip(1);
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--keystore" => {
+                keystore = Some(
+                    iter.next()
+                        .ok_or_else(|| Error::Input("--keystore requires a path".to_string()))?,
+                );
+            }
+            "--recipient" => {
+                recipient =
+                    Some(iter.next().ok_or_else(|| {
+                        Error::Input("--recipient requires a user id".to_string())
+                    })?);
+            }
+            "--text" => {
+                text = iter
+                    .next()
+                    .ok_or_else(|| Error::Input("--text requires content".to_string()))?;
+            }
+            "--help" | "-h" => {
+                print_usage();
+                std::process::exit(0);
+            }
+            other => return Err(Error::Input(format!("unknown argument: {other}"))),
+        }
+    }
+
+    let keystore = keystore.ok_or_else(|| {
+        print_usage();
+        Error::Input("--keystore is required".to_string())
+    })?;
+    let recipient = recipient.ok_or_else(|| {
+        print_usage();
+        Error::Input("--recipient is required".to_string())
+    })?;
+
+    Ok(Args {
+        keystore,
+        recipient,
+        text,
+    })
+}
+
+fn print_usage() {
+    eprintln!(
+        "usage: cargo run --example send_message -- --keystore <path> --recipient <user-id|app-creator> [--text <message>]"
+    );
 }

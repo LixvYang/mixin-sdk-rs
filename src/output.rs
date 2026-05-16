@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use url::form_urlencoded;
 
 use crate::{
@@ -10,13 +10,13 @@ use crate::{
 };
 
 pub const OUTPUT_STATE_UNSPENT: &str = "unspent";
+pub const OUTPUT_STATE_SIGNED: &str = "signed";
 pub const OUTPUT_STATE_SPENT: &str = "spent";
 
-#[derive(Debug, Deserialize, Serialize, Default, Clone)]
-pub struct KernelDeposit {
-    pub chain: Option<String>,
-    pub deposit_hash: Option<String>,
-    pub deposit_index: Option<i64>,
+#[derive(Debug, Serialize)]
+pub struct OutputFetchRequest<'a> {
+    pub user_id: &'a str,
+    pub ids: &'a [String],
 }
 
 pub async fn list_outputs(
@@ -54,6 +54,9 @@ pub async fn list_outputs(
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<Vec<Output>> = serde_json::from_slice(&body)?;
+    if let Some(api_error) = parsed.error {
+        return Err(Error::Api(api_error));
+    }
     parsed
         .data
         .ok_or_else(|| Error::DataNotFound("API response did not contain output data".to_string()))
@@ -83,6 +86,39 @@ pub async fn get_output(output_id: &str, safe_user: &SafeUser) -> Result<Output,
     let body = request("GET", &path, &[], &token).await?;
 
     let parsed: ApiResponse<Output> = serde_json::from_slice(&body)?;
+    if let Some(api_error) = parsed.error {
+        return Err(Error::Api(api_error));
+    }
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain output data".to_string()))
+}
+
+pub async fn fetch_safe_outputs(
+    user_id: &str,
+    output_ids: &[String],
+    safe_user: &SafeUser,
+) -> Result<Vec<Output>, Error> {
+    let path = "/safe/outputs/fetch";
+    let data = OutputFetchRequest {
+        user_id,
+        ids: output_ids,
+    };
+    let data_str = serde_json::to_string(&data)?;
+    let token = sign_authentication_token("POST", path, &data_str, safe_user)?;
+    let body = request("POST", path, data_str.as_bytes(), &token).await?;
+
+    let parsed: ApiResponse<Vec<Output>> = serde_json::from_slice(&body)?;
+    if let Some(api_error) = parsed.error {
+        if api_error.code == 404 {
+            let mut outputs = Vec::with_capacity(output_ids.len());
+            for output_id in output_ids {
+                outputs.push(get_output(output_id, safe_user).await?);
+            }
+            return Ok(outputs);
+        }
+        return Err(Error::Api(api_error));
+    }
     parsed
         .data
         .ok_or_else(|| Error::DataNotFound("API response did not contain output data".to_string()))
@@ -103,5 +139,19 @@ mod tests {
         assert!(query.contains("members=members"));
         assert!(query.contains("threshold=1"));
         assert!(query.contains("state=unspent"));
+    }
+
+    #[test]
+    fn test_output_fetch_request_serialization() {
+        let ids = vec!["output-1".to_string(), "output-2".to_string()];
+        let request = OutputFetchRequest {
+            user_id: "user-id",
+            ids: &ids,
+        };
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&request).unwrap()).unwrap();
+        assert_eq!(value["user_id"], "user-id");
+        assert_eq!(value["ids"][0], "output-1");
+        assert_eq!(value["ids"][1], "output-2");
     }
 }

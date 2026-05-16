@@ -2,7 +2,7 @@ use base64::{Engine as _, engine::general_purpose};
 use ed25519_dalek::Signer;
 use ed25519_dalek::SigningKey;
 use hex;
-use jsonwebtoken::{EncodingKey, Header, encode};
+use jsonwebtoken::Header;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use sha2::{Digest, Sha256};
@@ -88,32 +88,7 @@ pub fn sign_authentication_token_with_request_id(
         scp: "FULL".to_string(),
     };
 
-    let priv_key = hex::decode(&user.session_private_key)?;
-    if priv_key.len() != 32 {
-        return Err(AuthError::InvalidKeyLength);
-    }
-
-    let signing_key = SigningKey::from_bytes(
-        &priv_key
-            .try_into()
-            .map_err(|_| AuthError::InvalidPrivateKeyBytes)?,
-    );
-    let claims_str = serde_json::to_string(&claims)?;
-
-    let header_str = serde_json::to_string(&Header::new(jsonwebtoken::Algorithm::EdDSA))?;
-    let b64_header = general_purpose::URL_SAFE_NO_PAD.encode(header_str);
-    let b64_claims = general_purpose::URL_SAFE_NO_PAD.encode(claims_str);
-
-    let message = format!("{}.{}", b64_header, b64_claims);
-    let signature = signing_key.sign(message.as_bytes());
-
-    let token = format!(
-        "{}.{}",
-        message,
-        general_purpose::URL_SAFE_NO_PAD.encode(signature.to_bytes())
-    );
-
-    Ok(token)
+    sign_claims(&claims, &user.session_private_key)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -146,6 +121,13 @@ pub fn sign_oauth_access_token(
         scp: scope.to_string(),
     };
 
+    if hex::decode(private_key)?.len() != 32 {
+        return Err(AuthError::InvalidKeyLength);
+    }
+    sign_claims(&claims, private_key)
+}
+
+fn sign_claims(claims: &JwtClaims, private_key: &str) -> Result<String, AuthError> {
     let priv_key = hex::decode(private_key)?;
     if priv_key.len() != 32 {
         return Err(AuthError::InvalidKeyLength);
@@ -156,13 +138,18 @@ pub fn sign_oauth_access_token(
             .map_err(|_| AuthError::InvalidPrivateKeyBytes)?,
     );
 
-    let token = encode(
-        &Header::new(jsonwebtoken::Algorithm::EdDSA),
-        &claims,
-        &EncodingKey::from_ed_der(&signing_key.to_keypair_bytes()),
-    )?;
+    let claims_str = serde_json::to_string(claims)?;
+    let header_str = serde_json::to_string(&Header::new(jsonwebtoken::Algorithm::EdDSA))?;
+    let b64_header = general_purpose::URL_SAFE_NO_PAD.encode(header_str);
+    let b64_claims = general_purpose::URL_SAFE_NO_PAD.encode(claims_str);
 
-    Ok(token)
+    let message = format!("{b64_header}.{b64_claims}");
+    let signature = signing_key.sign(message.as_bytes());
+    Ok(format!(
+        "{}.{}",
+        message,
+        general_purpose::URL_SAFE_NO_PAD.encode(signature.to_bytes())
+    ))
 }
 
 #[derive(Debug, Deserialize)]

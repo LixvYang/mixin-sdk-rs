@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct User {
@@ -78,6 +78,8 @@ pub struct Output {
     pub output_type: Option<String>,
     pub output_id: String,
     #[serde(default)]
+    pub asset: Option<String>,
+    #[serde(default)]
     pub transaction_hash: Option<String>,
     #[serde(default)]
     pub output_index: Option<u32>,
@@ -104,6 +106,8 @@ pub struct Output {
     #[serde(default)]
     pub receivers: Option<Vec<String>>,
     #[serde(default)]
+    pub threshold: Option<i64>,
+    #[serde(default)]
     pub extra: Option<String>,
     #[serde(default)]
     pub state: Option<String>,
@@ -114,9 +118,60 @@ pub struct Output {
     #[serde(default)]
     pub updated_at: Option<String>,
     #[serde(default)]
+    pub signed_at: Option<String>,
+    #[serde(default)]
+    pub spent_at: Option<String>,
+    #[serde(default)]
+    pub signers: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_string_vec")]
     pub signed_by: Option<Vec<String>>,
     #[serde(default)]
     pub signed_tx: Option<String>,
+    #[serde(default)]
+    pub inscription_hash: Option<String>,
+    #[serde(default)]
+    pub request_id: Option<String>,
+    #[serde(default)]
+    pub deposit: Option<KernelDeposit>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
+pub struct KernelDeposit {
+    #[serde(default)]
+    pub chain: Option<String>,
+    #[serde(default)]
+    pub deposit_hash: Option<String>,
+    #[serde(default)]
+    pub deposit_index: Option<i64>,
+}
+
+fn deserialize_optional_string_vec<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    match value {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::String(value)) if value.is_empty() => Ok(None),
+        Some(serde_json::Value::String(value)) => Ok(Some(vec![value])),
+        Some(serde_json::Value::Array(values)) => {
+            let mut out = Vec::with_capacity(values.len());
+            for value in values {
+                match value {
+                    serde_json::Value::String(value) => out.push(value),
+                    other => {
+                        return Err(serde::de::Error::custom(format!(
+                            "expected string in signed_by array, got {other}"
+                        )));
+                    }
+                }
+            }
+            Ok(Some(out))
+        }
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected string or array for signed_by, got {other}"
+        ))),
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
@@ -276,6 +331,7 @@ mod tests {
             "type": "transaction",
             "output_id": "output-id",
             "transaction_hash": "tx-hash",
+            "asset": "kernel-asset",
             "output_index": 1,
             "asset_id": "asset-id",
             "kernel_asset_id": "kernel-asset-id",
@@ -293,8 +349,13 @@ mod tests {
             "sequence": 123,
             "created_at": "2024-01-02T03:04:05.000Z",
             "updated_at": "2024-01-02T03:04:05.000Z",
-            "signed_by": ["signer"],
-            "signed_tx": "signed"
+            "signed_by": "",
+            "signed_at": "",
+            "spent_at": "",
+            "signed_tx": "signed",
+            "inscription_hash": "inscription",
+            "request_id": "request-id",
+            "deposit": {"chain": "chain-id", "deposit_hash": "hash", "deposit_index": 0}
         }"#;
 
         let output: Output = serde_json::from_str(raw).expect("output");
@@ -302,6 +363,8 @@ mod tests {
         assert_eq!(output.output_type.as_deref(), Some("transaction"));
         assert_eq!(output.output_index, Some(1));
         assert_eq!(output.state.as_deref(), Some("unspent"));
+        assert_eq!(output.signed_by, None);
+        assert_eq!(output.deposit.unwrap().deposit_index, Some(0));
     }
 
     #[test]

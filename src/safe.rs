@@ -2,18 +2,17 @@ use crate::{
     auth,
     error::Error,
     pin::encrypt_ed25519_pin,
-    request::{ApiResponse, DEFAULT_API_HOST, DEFAULT_USER_AGENT, HTTP_CLIENT, request},
+    request::{ApiResponse, request},
     tip::{sign_tip_body, tip_body_for_sequencer_register, tip_body_for_verify},
     user::User,
 };
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::Signer;
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SafeUser {
     #[serde(rename = "app_id")]
     pub user_id: String,
@@ -63,8 +62,8 @@ impl SafeUser {
     }
 
     pub fn new_from_file(path: &str) -> Result<Self, Error> {
-        let file = std::fs::read(path).unwrap();
-        let safe_user: SafeUser = serde_json::from_slice(&file).unwrap();
+        let file = std::fs::read(path)?;
+        let safe_user: SafeUser = serde_json::from_slice(&file)?;
         Ok(safe_user)
     }
 
@@ -78,9 +77,12 @@ impl SafeUser {
         } else {
             env
         };
-        let env = std::env::var(env).unwrap();
+        let env = std::env::var(env)?;
         let path = std::path::Path::new(&env);
-        Self::new_from_file(path.to_str().unwrap())
+        let path = path
+            .to_str()
+            .ok_or_else(|| Error::Input("keystore path is not valid UTF-8".to_string()))?;
+        Self::new_from_file(path)
     }
 }
 
@@ -107,17 +109,7 @@ pub async fn request_safe_ghost_keys(
         user,
     )?;
 
-    let response = HTTP_CLIENT
-        .post(DEFAULT_API_HOST.to_string() + path)
-        .header(AUTHORIZATION, format!("Bearer {}", token))
-        .header(CONTENT_TYPE, "application/json")
-        .header(USER_AGENT, DEFAULT_USER_AGENT)
-        .json(&gkr)
-        .send()
-        .await?;
-
-    let body = response.bytes().await?;
-
+    let body = request("POST", path, &data, &token).await?;
     let parsed: ApiResponse<Vec<GhostKeys>> = serde_json::from_slice(&body)?;
 
     if let Some(api_error) = parsed.error {

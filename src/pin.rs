@@ -7,9 +7,15 @@ use rand::RngCore;
 use sha2::{Digest, Sha512};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{error::Error, safe::SafeUser};
+use crate::{
+    auth::sign_authentication_token,
+    error::Error,
+    request::{ApiResponse, request},
+    safe::SafeUser,
+    user::User,
+};
 
-fn private_key_to_curve25519(seed: &[u8; 32]) -> [u8; 32] {
+pub(crate) fn private_key_to_curve25519(seed: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Sha512::new();
     hasher.update(seed);
     let digest = hasher.finalize();
@@ -22,7 +28,7 @@ fn private_key_to_curve25519(seed: &[u8; 32]) -> [u8; 32] {
     out
 }
 
-fn public_key_to_curve25519(public_key: &[u8; 32]) -> Result<[u8; 32], Error> {
+pub(crate) fn public_key_to_curve25519(public_key: &[u8; 32]) -> Result<[u8; 32], Error> {
     let compressed = CompressedEdwardsY(*public_key);
     let point = compressed
         .decompress()
@@ -30,7 +36,7 @@ fn public_key_to_curve25519(public_key: &[u8; 32]) -> Result<[u8; 32], Error> {
     Ok(point.to_montgomery().to_bytes())
 }
 
-fn shared_key(
+pub(crate) fn shared_key(
     session_private_key: &[u8; 32],
     server_public_key: &[u8; 32],
 ) -> Result<[u8; 32], Error> {
@@ -102,6 +108,98 @@ fn encrypt_ed25519_pin_with_time(
     Ok(general_purpose::URL_SAFE_NO_PAD.encode(payload))
 }
 
+#[derive(Debug, serde::Serialize)]
+struct PinVerifyRequest<'a> {
+    pin_base64: &'a str,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct PinUpdateRequest<'a> {
+    old_pin_base64: &'a str,
+    pin_base64: &'a str,
+}
+
+pub async fn verify_pin(pin_hex: &str, safe_user: &SafeUser) -> Result<User, Error> {
+    let pin_base64 = encrypt_ed25519_pin(pin_hex, now_nanos()?, safe_user)?;
+    verify_pin_with_encrypted(&pin_base64, safe_user).await
+}
+
+pub async fn verify_pin_with_encrypted(
+    pin_base64: &str,
+    safe_user: &SafeUser,
+) -> Result<User, Error> {
+    let path = "/pin/verify";
+    let data_str = serde_json::to_string(&PinVerifyRequest { pin_base64 })?;
+    let token = sign_authentication_token("POST", path, &data_str, safe_user)?;
+    let body = request("POST", path, data_str.as_bytes(), &token).await?;
+
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    if let Some(api_error) = parsed.error {
+        return Err(Error::Api(api_error));
+    }
+    parsed
+        .data
+        .ok_or_else(|| Error::DataNotFound("API response did not contain user data".to_string()))
+}
+
+pub async fn update_pin(
+    old_pin_hex: &str,
+    new_pin_hex: &str,
+    safe_user: &SafeUser,
+) -> Result<Option<User>, Error> {
+    let old_pin_base64 = encrypt_ed25519_pin(old_pin_hex, now_nanos()?, safe_user)?;
+    let pin_base64 = encrypt_ed25519_pin(new_pin_hex, now_nanos()?, safe_user)?;
+    update_pin_with_encrypted(&old_pin_base64, &pin_base64, safe_user).await
+}
+
+pub async fn update_tip_pin(
+    old_pin_hex: &str,
+    public_tip_hex: &str,
+    counter: u64,
+    safe_user: &SafeUser,
+) -> Result<Option<User>, Error> {
+    let old_pin_base64 = encrypt_ed25519_pin(old_pin_hex, now_nanos()?, safe_user)?;
+    let tip_update_hex = tip_pin_update_hex(public_tip_hex, counter)?;
+    let pin_base64 = encrypt_ed25519_pin(&tip_update_hex, now_nanos()?, safe_user)?;
+    update_pin_with_encrypted(&old_pin_base64, &pin_base64, safe_user).await
+}
+
+pub async fn update_pin_with_encrypted(
+    old_pin_base64: &str,
+    pin_base64: &str,
+    safe_user: &SafeUser,
+) -> Result<Option<User>, Error> {
+    let path = "/pin/update";
+    let data_str = serde_json::to_string(&PinUpdateRequest {
+        old_pin_base64,
+        pin_base64,
+    })?;
+    let token = sign_authentication_token("POST", path, &data_str, safe_user)?;
+    let body = request("POST", path, data_str.as_bytes(), &token).await?;
+
+    let parsed: ApiResponse<User> = serde_json::from_slice(&body)?;
+    if let Some(api_error) = parsed.error {
+        return Err(Error::Api(api_error));
+    }
+    Ok(parsed.data)
+}
+
+fn tip_pin_update_hex(public_tip_hex: &str, counter: u64) -> Result<String, Error> {
+    let mut public_tip = hex::decode(public_tip_hex)?;
+    if public_tip.len() != 32 {
+        return Err(Error::Input("invalid TIP public key length".to_string()));
+    }
+    public_tip.extend_from_slice(&counter.to_be_bytes());
+    Ok(hex::encode(public_tip))
+}
+
+fn now_nanos() -> Result<u64, Error> {
+    Ok(SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| Error::Server(e.to_string()))?
+        .as_nanos() as u64)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,5 +258,39 @@ mod tests {
         expected.extend_from_slice(&iterator.to_le_bytes());
 
         assert_eq!(decrypted, expected);
+    }
+
+    #[test]
+    fn test_pin_verify_request_uses_go_field_name() {
+        let value: serde_json::Value = serde_json::from_str(
+            &serde_json::to_string(&PinVerifyRequest {
+                pin_base64: "encrypted",
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(value["pin_base64"], "encrypted");
+    }
+
+    #[test]
+    fn test_pin_update_request_serialization() {
+        let value: serde_json::Value = serde_json::from_str(
+            &serde_json::to_string(&PinUpdateRequest {
+                old_pin_base64: "",
+                pin_base64: "new",
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(value["old_pin_base64"], "");
+        assert_eq!(value["pin_base64"], "new");
+    }
+
+    #[test]
+    fn test_tip_pin_update_hex_appends_big_endian_counter() {
+        let public_tip = "00".repeat(32);
+        let encoded = tip_pin_update_hex(&public_tip, 1).expect("tip update");
+        assert_eq!(encoded.len(), 80);
+        assert!(encoded.ends_with("0000000000000001"));
     }
 }

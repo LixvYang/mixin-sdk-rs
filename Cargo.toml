@@ -1,6 +1,6 @@
 [package]
 name = "mixin-sdk-rs"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2024"
 authors = ["Larsson"]
 description = "Mixin SDK for Rust"
@@ -16,23 +16,32 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ed25519-dalek = "2.1"
 sha2 = "0.10"
+sha3 = "0.10"
+blake3 = "1"
 hex = "0.4"
 uuid = { version = "1.7", features = ["v4"] }
 once_cell = "1.19"
 chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = "9.3.1"
 base64 = "0.22.1"
+bs58 = "0.5"
 ring = "0.17.14"
+rustls = { version = "0.23.28", default-features = false, features = ["ring", "std"] }
 thiserror = "2.0.12"
 http = "1.1.0"
 md5 = "0.7"
 url = "2.5.0"
 aes = "0.8"
+aes-gcm = "0.10"
+async-trait = "0.1"
 cbc = "0.1"
 cipher = "0.4"
 curve25519-dalek = "4"
 rand = "0.8"
 x25519-dalek = "2"
+tokio-tungstenite = { version = "0.29.0", features = ["rustls-tls-webpki-roots"] }
+futures-util = { version = "0.3.32", features = ["sink"] }
+flate2 = "1.1.9"
 
 [profile.release]
 lto = true

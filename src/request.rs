@@ -1,9 +1,11 @@
 use once_cell::sync::Lazy;
 use reqwest::{
     Client,
-    header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue, USER_AGENT},
+    header::{
+        AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue, USER_AGENT,
+    },
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::time::Duration;
 use uuid::Uuid;
@@ -35,10 +37,13 @@ pub struct ApiResponse<T> {
     pub error: Option<ApiError>,
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct ApiError {
+    #[serde(default)]
     pub status: i32,
+    #[serde(default)]
     pub code: i32,
+    #[serde(default)]
     pub description: String,
 }
 
@@ -66,6 +71,10 @@ pub fn set_base_uri(base: String) {
 
 pub fn set_blaze_uri(blaze: String) {
     *BLAZE_URI.lock().unwrap() = blaze;
+}
+
+pub fn get_blaze_uri() -> String {
+    BLAZE_URI.lock().unwrap().clone()
 }
 
 pub fn set_user_agent(ua: String) {
@@ -112,25 +121,25 @@ pub async fn request_with_id(
 ) -> Result<Vec<u8>, Error> {
     let uri = format!("{}{}", *HTTP_URI.lock().unwrap(), path);
 
-    let headers = build_headers(Some(access_token), Some(&request_id))?;
+    let access_token = if access_token.is_empty() {
+        None
+    } else {
+        Some(access_token)
+    };
+    let headers = build_headers(access_token, Some(&request_id))?;
 
-    let response = HTTP_CLIENT
-        .request(reqwest::Method::from_bytes(method.as_bytes())?, &uri)
-        .headers(headers)
-        .body(body.to_vec())
-        .send()
-        .await?;
-
-    if response.status().is_server_error() {
-        let error = ApiError {
-            status: response.status().as_u16() as i32,
-            code: 0,
-            description: "Server error".to_string(),
-        };
-        return Err(error.into());
+    let method = reqwest::Method::from_bytes(method.as_bytes())?;
+    let mut request_builder = HTTP_CLIENT.request(method.clone(), &uri).headers(headers);
+    if method != reqwest::Method::GET {
+        request_builder = request_builder.header(CONTENT_LENGTH, body.len());
     }
+    let response = request_builder.body(body.to_vec()).send().await?;
 
+    let status = response.status();
     let body = response.bytes().await?;
+    if !status.is_success() {
+        return Err(parse_http_error(status, &body).into());
+    }
     Ok(body.to_vec())
 }
 
@@ -138,24 +147,44 @@ pub async fn simple_request(method: &str, path: &str, body: &[u8]) -> Result<Vec
     let uri = format!("{}{}", *HTTP_URI.lock().unwrap(), path);
 
     let headers = build_headers(None, None)?;
-    let response = HTTP_CLIENT
-        .request(reqwest::Method::from_bytes(method.as_bytes())?, &uri)
-        .headers(headers)
-        .body(body.to_vec())
-        .send()
-        .await?;
+    let method = reqwest::Method::from_bytes(method.as_bytes())?;
+    let mut request_builder = HTTP_CLIENT.request(method.clone(), &uri).headers(headers);
+    if method != reqwest::Method::GET {
+        request_builder = request_builder.header(CONTENT_LENGTH, body.len());
+    }
+    let response = request_builder.body(body.to_vec()).send().await?;
 
-    if response.status().is_server_error() {
-        let error = ApiError {
-            status: response.status().as_u16() as i32,
-            code: 0,
-            description: "Server error".to_string(),
-        };
-        return Err(error.into());
+    let status = response.status();
+    let body = response.bytes().await?;
+    if !status.is_success() {
+        return Err(parse_http_error(status, &body).into());
+    }
+    Ok(body.to_vec())
+}
+
+fn parse_http_error(status: reqwest::StatusCode, body: &[u8]) -> ApiError {
+    if let Ok(parsed) = serde_json::from_slice::<ApiResponse<serde_json::Value>>(body) {
+        if let Some(mut api_error) = parsed.error {
+            if api_error.status == 0 {
+                api_error.status = status.as_u16() as i32;
+            }
+            return api_error;
+        }
     }
 
-    let body = response.bytes().await?;
-    Ok(body.to_vec())
+    let description = String::from_utf8_lossy(body).trim().to_string();
+    ApiError {
+        status: status.as_u16() as i32,
+        code: status.as_u16() as i32,
+        description: if description.is_empty() {
+            status
+                .canonical_reason()
+                .unwrap_or("HTTP error")
+                .to_string()
+        } else {
+            description
+        },
+    }
 }
 
 #[cfg(test)]
@@ -181,5 +210,32 @@ mod tests {
             headers.get(AUTHORIZATION).unwrap(),
             HeaderValue::from_static("Bearer token-123")
         );
+    }
+
+    #[test]
+    fn test_parse_http_error_prefers_api_error_body() {
+        let body = br#"{"error":{"status":403,"code":403,"description":"Forbidden"}}"#;
+        let error = parse_http_error(reqwest::StatusCode::FORBIDDEN, body);
+        assert_eq!(error.status, 403);
+        assert_eq!(error.code, 403);
+        assert_eq!(error.description, "Forbidden");
+    }
+
+    #[test]
+    fn test_parse_http_error_uses_plain_body() {
+        let error = parse_http_error(reqwest::StatusCode::NOT_FOUND, b"404 page not found\n");
+        assert_eq!(error.status, 404);
+        assert_eq!(error.code, 404);
+        assert_eq!(error.description, "404 page not found");
+    }
+
+    #[test]
+    fn test_api_error_deserializes_oauth_shape() {
+        let body = r#"{"error":{"code":400,"description":"invalid grant"}}"#;
+        let parsed: ApiResponse<serde_json::Value> = serde_json::from_str(body).expect("error");
+        let error = parsed.error.expect("api error");
+        assert_eq!(error.status, 0);
+        assert_eq!(error.code, 400);
+        assert_eq!(error.description, "invalid grant");
     }
 }

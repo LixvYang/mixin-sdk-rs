@@ -5,6 +5,7 @@ use crate::{
     auth::sign_authentication_token,
     error::Error,
     models::Asset,
+    network,
     request::{ApiResponse, request},
     safe::SafeUser,
 };
@@ -17,21 +18,7 @@ pub struct AssetFee {
     pub amount: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default, Clone)]
-pub struct AssetNetwork {
-    pub asset_id: Option<String>,
-    pub chain_id: Option<String>,
-    pub asset_key: Option<String>,
-    pub symbol: Option<String>,
-    pub name: Option<String>,
-    pub icon_url: Option<String>,
-    pub price_usd: Option<String>,
-    pub price_btc: Option<String>,
-    pub change_usd: Option<String>,
-    pub change_btc: Option<String>,
-    pub confirmations: Option<i64>,
-    pub balance: Option<String>,
-}
+pub use crate::network::NetworkAsset as AssetNetwork;
 
 pub async fn list_assets(safe_user: &SafeUser) -> Result<Vec<Asset>, Error> {
     let path = "/assets";
@@ -86,33 +73,15 @@ pub async fn read_asset_fees(
 }
 
 pub async fn read_network_assets() -> Result<Vec<AssetNetwork>, Error> {
-    let path = "/network";
-    let body = request("GET", path, &[], "").await?;
-
-    let parsed: ApiResponse<Vec<AssetNetwork>> = serde_json::from_slice(&body)?;
-    parsed.data.ok_or_else(|| {
-        Error::DataNotFound("API response did not contain network assets".to_string())
-    })
+    network::read_network_assets().await
 }
 
 pub async fn read_network_assets_top() -> Result<Vec<AssetNetwork>, Error> {
-    let path = "/network/assets/top";
-    let body = request("GET", path, &[], "").await?;
-
-    let parsed: ApiResponse<Vec<AssetNetwork>> = serde_json::from_slice(&body)?;
-    parsed.data.ok_or_else(|| {
-        Error::DataNotFound("API response did not contain network assets".to_string())
-    })
+    network::read_network_assets_top(None).await
 }
 
 pub async fn read_network_asset(asset_id: &str) -> Result<AssetNetwork, Error> {
-    let path = format!("/network/assets/{asset_id}");
-    let body = request("GET", &path, &[], "").await?;
-
-    let parsed: ApiResponse<AssetNetwork> = serde_json::from_slice(&body)?;
-    parsed.data.ok_or_else(|| {
-        Error::DataNotFound("API response did not contain network asset".to_string())
-    })
+    network::read_network_asset(asset_id).await
 }
 
 #[cfg(test)]
@@ -147,7 +116,7 @@ mod tests {
             "balance": "0"
         }"#;
         let asset: AssetNetwork = serde_json::from_str(raw).expect("asset");
-        assert_eq!(asset.asset_id.as_deref(), Some("asset-id"));
+        assert_eq!(asset.asset_id, "asset-id");
         assert_eq!(asset.symbol.as_deref(), Some("BTC"));
         assert_eq!(asset.confirmations, Some(6));
     }
