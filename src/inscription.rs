@@ -271,6 +271,22 @@ where
         .ok_or_else(|| Error::DataNotFound(label.to_string()))
 }
 
+fn default_deploy_operation() -> String {
+    INSCRIPTION_OPERATION_DEPLOY.to_string()
+}
+
+fn default_inscribe_operation() -> String {
+    INSCRIPTION_OPERATION_INSCRIBE.to_string()
+}
+
+fn default_distribute_operation() -> String {
+    INSCRIPTION_OPERATION_DISTRIBUTE.to_string()
+}
+
+fn default_occupy_operation() -> String {
+    INSCRIPTION_OPERATION_OCCUPY.to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -351,20 +367,4 @@ mod tests {
         assert_eq!(occupy_json["operation"], INSCRIPTION_OPERATION_OCCUPY);
         assert_eq!(occupy_json["sequence"], 9);
     }
-}
-
-fn default_deploy_operation() -> String {
-    INSCRIPTION_OPERATION_DEPLOY.to_string()
-}
-
-fn default_inscribe_operation() -> String {
-    INSCRIPTION_OPERATION_INSCRIBE.to_string()
-}
-
-fn default_distribute_operation() -> String {
-    INSCRIPTION_OPERATION_DISTRIBUTE.to_string()
-}
-
-fn default_occupy_operation() -> String {
-    INSCRIPTION_OPERATION_OCCUPY.to_string()
 }

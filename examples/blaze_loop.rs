@@ -133,10 +133,11 @@ fn print_message(label: &str, message: &MessageView, show_data: bool) {
         message.category,
         message.kind()
     );
-    if show_data && message.kind() == BlazeMessageKind::Message {
-        if let Ok(text) = message.data_text() {
-            println!("text: {}", truncate(&text, 256));
-        }
+    if show_data
+        && message.kind() == BlazeMessageKind::Message
+        && let Ok(text) = message.data_text()
+    {
+        println!("text: {}", truncate(&text, 256));
     }
 }
 

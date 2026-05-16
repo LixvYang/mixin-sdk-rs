@@ -1280,7 +1280,7 @@ mod tests {
 
         let encrypted = encrypt_message_plaintext(
             b"secret message",
-            &[recipient_session.clone()],
+            std::slice::from_ref(&recipient_session),
             &sender_private,
         )
         .unwrap();
@@ -1310,9 +1310,12 @@ mod tests {
             test_session(4, "recipient", "00000000-0000-0000-0000-000000000004");
 
         let data_base64 = encode_message_data("hello");
-        let encrypted =
-            encrypt_message_data(&data_base64, &[recipient_session.clone()], &sender_private)
-                .unwrap();
+        let encrypted = encrypt_message_data(
+            &data_base64,
+            std::slice::from_ref(&recipient_session),
+            &sender_private,
+        )
+        .unwrap();
         let decrypted = decrypt_message_data(
             &encrypted,
             &recipient_session.session_id,
@@ -1337,7 +1340,7 @@ mod tests {
 
         let encrypted = encrypt_message_plaintext_with_rng(
             b"hello",
-            &[session.clone()],
+            std::slice::from_ref(&session),
             sender_private_b64,
             &mut rng,
         )
@@ -1369,7 +1372,7 @@ mod tests {
             &safe_user.user_id,
             "recipient",
             "secret",
-            &[recipient_session.clone()],
+            std::slice::from_ref(&recipient_session),
             &safe_user,
         )
         .unwrap();

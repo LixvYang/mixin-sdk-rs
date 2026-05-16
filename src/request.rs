@@ -163,13 +163,13 @@ pub async fn simple_request(method: &str, path: &str, body: &[u8]) -> Result<Vec
 }
 
 fn parse_http_error(status: reqwest::StatusCode, body: &[u8]) -> ApiError {
-    if let Ok(parsed) = serde_json::from_slice::<ApiResponse<serde_json::Value>>(body) {
-        if let Some(mut api_error) = parsed.error {
-            if api_error.status == 0 {
-                api_error.status = status.as_u16() as i32;
-            }
-            return api_error;
+    if let Ok(parsed) = serde_json::from_slice::<ApiResponse<serde_json::Value>>(body)
+        && let Some(mut api_error) = parsed.error
+    {
+        if api_error.status == 0 {
+            api_error.status = status.as_u16() as i32;
         }
+        return api_error;
     }
 
     let description = String::from_utf8_lossy(body).trim().to_string();
